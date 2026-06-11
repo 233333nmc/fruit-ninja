@@ -6,6 +6,7 @@ public class BladeVisuals : MonoBehaviour
     [SerializeField] private Transform leftBlade;
     [SerializeField] private Vector3 rightViewportIdle = new Vector3(0.62f, 0.08f, 1.05f);
     [SerializeField] private Vector3 leftViewportIdle = new Vector3(0.38f, 0.08f, 1.05f);
+    [SerializeField] private Vector3 bladeRootOffset = new Vector3(0f, -0.12f, 0f);
 
     private Material rightMaterial;
     private Material leftMaterial;
@@ -14,8 +15,8 @@ public class BladeVisuals : MonoBehaviour
     private void Awake()
     {
         mainCamera = Camera.main;
-        rightMaterial = CreateMaterial("Right Saber Material", new Color(0.02f, 0.05f, 0.12f));
-        leftMaterial = CreateMaterial("Left Saber Material", new Color(0.02f, 0.13f, 0.28f));
+        rightMaterial = CreateMaterial("Right Saber Material", new Color(0.25f, 0.9f, 1f));
+        leftMaterial = CreateMaterial("Left Saber Material", new Color(1f, 0.55f, 0.12f));
 
         rightBlade = CreateBlade("Right VR Saber", rightMaterial, ViewportToWorld(rightViewportIdle));
         leftBlade = CreateBlade("Left VR Saber", leftMaterial, ViewportToWorld(leftViewportIdle));
@@ -23,50 +24,61 @@ public class BladeVisuals : MonoBehaviour
 
     public void SetRightBladePose(Vector3 bladeTip, bool active)
     {
-        SetRightBladePose(bladeTip, active, true);
+        SetRightBladePose(bladeTip, Quaternion.identity, active);
+    }
+
+    public void SetRightBladePose(Vector3 bladeTip, Quaternion rotation, bool active)
+    {
+        SetRightBladePose(bladeTip, rotation, active, true);
     }
 
     public void SetBladePoses(Vector3 rightBladeTip, bool rightActive, Vector3 leftBladeTip, bool leftActive)
     {
-        SetRightBladePose(rightBladeTip, rightActive, false);
-        SetLeftBladePose(leftBladeTip, leftActive);
+        SetBladePoses(rightBladeTip, Quaternion.identity, rightActive, leftBladeTip, Quaternion.identity, leftActive);
     }
 
-    private void SetRightBladePose(Vector3 bladeTip, bool active, bool mirrorLeft)
+    public void SetBladePoses(Vector3 rightBladeTip, Quaternion rightRotation, bool rightActive, Vector3 leftBladeTip, Quaternion leftRotation, bool leftActive)
+    {
+        SetRightBladePose(rightBladeTip, rightRotation, rightActive, false);
+        SetLeftBladePose(leftBladeTip, leftRotation, leftActive);
+    }
+
+    private void SetRightBladePose(Vector3 bladeTip, Quaternion rotation, bool active, bool mirrorLeft)
     {
         if (rightBlade == null)
             return;
 
-        Vector3 idle = ViewportToWorld(rightViewportIdle);
-        Vector3 handle = Vector3.Lerp(idle, bladeTip + new Vector3(0.18f, -0.62f, -0.45f), active ? 0.42f : 0.08f);
-        Vector3 direction = bladeTip - handle;
-        if (direction.sqrMagnitude < 0.001f) {
-            direction = Vector3.up;
+        if (active) {
+            rightBlade.position = bladeTip + rotation * bladeRootOffset;
+            rightBlade.rotation = rotation == Quaternion.identity ? rightBlade.rotation : rotation;
+        } else {
+            Vector3 idle = ViewportToWorld(rightViewportIdle);
+            rightBlade.position = Vector3.Lerp(rightBlade.position, idle, 0.08f);
         }
-
-        rightBlade.position = handle + direction.normalized * 0.62f;
-        rightBlade.rotation = Quaternion.LookRotation(Vector3.forward, direction.normalized);
 
         if (mirrorLeft) {
             Vector3 mirroredTip = new Vector3(-bladeTip.x, bladeTip.y * 0.65f - 0.5f, bladeTip.z - 0.25f);
-            SetLeftBladePose(mirroredTip, active);
+            SetLeftBladePose(mirroredTip, rotation, active);
         }
     }
 
     private void SetLeftBladePose(Vector3 bladeTip, bool active)
     {
+        SetLeftBladePose(bladeTip, Quaternion.identity, active);
+    }
+
+    private void SetLeftBladePose(Vector3 bladeTip, Quaternion rotation, bool active)
+    {
         if (leftBlade == null)
             return;
 
-        Vector3 idle = ViewportToWorld(leftViewportIdle);
-        Vector3 handle = Vector3.Lerp(idle, bladeTip + new Vector3(-0.18f, -0.62f, -0.45f), active ? 0.42f : 0.08f);
-        Vector3 direction = bladeTip - handle;
-        if (direction.sqrMagnitude < 0.001f) {
-            direction = Vector3.up;
+        if (active) {
+            leftBlade.position = bladeTip + rotation * bladeRootOffset;
+            leftBlade.rotation = rotation == Quaternion.identity ? leftBlade.rotation : rotation;
+        } else {
+            Vector3 idle = ViewportToWorld(leftViewportIdle);
+            leftBlade.position = Vector3.Lerp(leftBlade.position, idle, 0.08f);
         }
-
-        leftBlade.position = handle + direction.normalized * 0.62f;
-        leftBlade.rotation = Quaternion.LookRotation(Vector3.forward, direction.normalized);
     }
 
     private Transform CreateBlade(string name, Material material, Vector3 idlePosition)
@@ -77,24 +89,24 @@ public class BladeVisuals : MonoBehaviour
         GameObject shaft = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
         shaft.name = "Saber Shaft";
         shaft.transform.SetParent(root.transform, false);
-        shaft.transform.localScale = new Vector3(0.028f, 0.68f, 0.028f);
-        shaft.transform.localPosition = Vector3.zero;
+        shaft.transform.localScale = new Vector3(0.055f, 0.26f, 0.055f);
+        shaft.transform.localPosition = new Vector3(0f, 0.16f, 0f);
         shaft.GetComponent<Renderer>().material = material;
         Destroy(shaft.GetComponent<Collider>());
 
         GameObject guard = GameObject.CreatePrimitive(PrimitiveType.Cube);
         guard.name = "Saber Guard";
         guard.transform.SetParent(root.transform, false);
-        guard.transform.localPosition = new Vector3(0f, -0.58f, 0f);
-        guard.transform.localScale = new Vector3(0.28f, 0.045f, 0.075f);
+        guard.transform.localPosition = new Vector3(0f, -0.12f, 0f);
+        guard.transform.localScale = new Vector3(0.14f, 0.025f, 0.045f);
         guard.GetComponent<Renderer>().material = material;
         Destroy(guard.GetComponent<Collider>());
 
         GameObject handle = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
         handle.name = "Saber Handle";
         handle.transform.SetParent(root.transform, false);
-        handle.transform.localPosition = new Vector3(0f, -0.78f, 0f);
-        handle.transform.localScale = new Vector3(0.055f, 0.2f, 0.055f);
+        handle.transform.localPosition = new Vector3(0f, -0.24f, 0f);
+        handle.transform.localScale = new Vector3(0.04f, 0.11f, 0.04f);
         handle.GetComponent<Renderer>().material = material;
         Destroy(handle.GetComponent<Collider>());
 
@@ -115,6 +127,8 @@ public class BladeVisuals : MonoBehaviour
         Material material = new Material(Shader.Find("Standard"));
         material.name = name;
         material.color = color;
+        material.EnableKeyword("_EMISSION");
+        material.SetColor("_EmissionColor", color * 1.6f);
         return material;
     }
 }

@@ -6,7 +6,11 @@ public class StartMenuView : MonoBehaviour
 {
     [SerializeField] private GameObject startFruitPrefab;
     [SerializeField] private GameObject[] modeFruitPrefabs;
-    [SerializeField] private float startFruitScale = 0.38f;
+    [SerializeField] private float startFruitScale = 0.075f;
+    [SerializeField] private Vector3 menuCanvasPosition = new Vector3(0f, 1.8f, -3.25f);
+    [SerializeField] private Vector3 menuCanvasEulerAngles = new Vector3(0f, 0f, 0f);
+    [SerializeField] private Vector2 menuCanvasSize = new Vector2(1.4f, 0.55f);
+    [SerializeField] private float menuCanvasScale = 0.0015f;
 
     private Canvas canvas;
     private readonly List<GameObject> startFruits = new List<GameObject>();
@@ -52,11 +56,18 @@ public class StartMenuView : MonoBehaviour
         canvasObject.transform.SetParent(transform, false);
 
         canvas = canvasObject.AddComponent<Canvas>();
-        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        canvas.renderMode = RenderMode.WorldSpace;
         canvas.sortingOrder = 10;
+        canvas.worldCamera = Camera.main;
+
+        RectTransform canvasRect = canvas.GetComponent<RectTransform>();
+        canvasRect.sizeDelta = menuCanvasSize / menuCanvasScale;
+        canvasRect.position = menuCanvasPosition;
+        canvasRect.rotation = Quaternion.Euler(menuCanvasEulerAngles);
+        canvasRect.localScale = Vector3.one * menuCanvasScale;
 
         CanvasScaler scaler = canvasObject.AddComponent<CanvasScaler>();
-        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        scaler.uiScaleMode = CanvasScaler.ScaleMode.ConstantPixelSize;
         scaler.referenceResolution = new Vector2(1920f, 1080f);
 
         canvasObject.AddComponent<GraphicRaycaster>();
@@ -74,7 +85,7 @@ public class StartMenuView : MonoBehaviour
         Text title = titleObject.AddComponent<Text>();
         title.text = "FRUIT NINJA VR";
         title.font = Resources.GetBuiltinResource<Font>("Arial.ttf");
-        title.fontSize = 68;
+        title.fontSize = 60;
         title.fontStyle = FontStyle.Bold;
         title.alignment = TextAnchor.UpperCenter;
         title.color = new Color(1f, 0.85f, 0.18f);
@@ -83,7 +94,7 @@ public class StartMenuView : MonoBehaviour
         rect.anchorMin = new Vector2(0.5f, 1f);
         rect.anchorMax = new Vector2(0.5f, 1f);
         rect.pivot = new Vector2(0.5f, 1f);
-        rect.anchoredPosition = new Vector2(0f, -32f);
+        rect.anchoredPosition = new Vector2(0f, -18f);
         rect.sizeDelta = new Vector2(860f, 110f);
     }
 
@@ -95,7 +106,7 @@ public class StartMenuView : MonoBehaviour
         Text hint = hintObject.AddComponent<Text>();
         hint.text = "Slice a fruit to choose your mode";
         hint.font = Resources.GetBuiltinResource<Font>("Arial.ttf");
-        hint.fontSize = 34;
+        hint.fontSize = 28;
         hint.fontStyle = FontStyle.Bold;
         hint.alignment = TextAnchor.MiddleCenter;
         hint.color = new Color(1f, 0.95f, 0.78f);
@@ -104,7 +115,7 @@ public class StartMenuView : MonoBehaviour
         rect.anchorMin = new Vector2(0.5f, 0.5f);
         rect.anchorMax = new Vector2(0.5f, 0.5f);
         rect.pivot = new Vector2(0.5f, 0.5f);
-        rect.anchoredPosition = new Vector2(0f, -275f);
+        rect.anchoredPosition = new Vector2(0f, -140f);
         rect.sizeDelta = new Vector2(760f, 90f);
     }
 
@@ -116,7 +127,7 @@ public class StartMenuView : MonoBehaviour
         Text label = labelObject.AddComponent<Text>();
         label.text = "CLASSIC  |  ARCADE  |  ZEN  |  BATTLE";
         label.font = Resources.GetBuiltinResource<Font>("Arial.ttf");
-        label.fontSize = 30;
+        label.fontSize = 24;
         label.fontStyle = FontStyle.Bold;
         label.alignment = TextAnchor.MiddleCenter;
         label.color = new Color(0.3f, 0.9f, 1f);
@@ -125,7 +136,7 @@ public class StartMenuView : MonoBehaviour
         rect.anchorMin = new Vector2(0.5f, 0.5f);
         rect.anchorMax = new Vector2(0.5f, 0.5f);
         rect.pivot = new Vector2(0.5f, 0.5f);
-        rect.anchoredPosition = new Vector2(0f, 260f);
+        rect.anchoredPosition = new Vector2(0f, 108f);
         rect.sizeDelta = new Vector2(820f, 70f);
     }
 
@@ -134,10 +145,10 @@ public class StartMenuView : MonoBehaviour
         if (startFruits.Count > 0 || startFruitPrefab == null)
             return;
 
-        CreateModeFruit(FruitNinjaMode.Classic, new Vector3(-2.15f, 1.45f, -3.35f), "CLASSIC\n3 MISSES");
-        CreateModeFruit(FruitNinjaMode.Arcade, new Vector3(-0.72f, 1.95f, -3.35f), "ARCADE\n60 SEC");
-        CreateModeFruit(FruitNinjaMode.Zen, new Vector3(0.72f, 1.95f, -3.35f), "ZEN\nNO BOMBS");
-        CreateModeFruit(FruitNinjaMode.Battle, new Vector3(2.15f, 1.45f, -3.35f), "BATTLE\nSCORE");
+        CreateModeFruit(FruitNinjaMode.Classic, new Vector3(-0.55f, 1.2f, -3.35f), "CLASSIC\n3 MISSES");
+        CreateModeFruit(FruitNinjaMode.Arcade, new Vector3(-0.18f, 1.42f, -3.35f), "ARCADE\n60 SEC");
+        CreateModeFruit(FruitNinjaMode.Zen, new Vector3(0.18f, 1.42f, -3.35f), "ZEN\nNO BOMBS");
+        CreateModeFruit(FruitNinjaMode.Battle, new Vector3(0.55f, 1.2f, -3.35f), "BATTLE\nSCORE");
     }
 
     private void CreateModeFruit(FruitNinjaMode mode, Vector3 position, string label)
@@ -184,13 +195,13 @@ public class StartMenuView : MonoBehaviour
     {
         GameObject labelObject = new GameObject("Mode World Label");
         labelObject.transform.SetParent(parent, false);
-        labelObject.transform.localPosition = new Vector3(0f, -0.85f, 0f);
+        labelObject.transform.localPosition = new Vector3(0f, -0.42f, 0f);
         labelObject.transform.localScale = Vector3.one / startFruitScale;
 
         TextMesh label = labelObject.AddComponent<TextMesh>();
         label.text = text;
-        label.fontSize = 40;
-        label.characterSize = 0.042f;
+        label.fontSize = 32;
+        label.characterSize = 0.018f;
         label.anchor = TextAnchor.MiddleCenter;
         label.alignment = TextAlignment.Center;
         label.color = new Color(1f, 0.92f, 0.55f);

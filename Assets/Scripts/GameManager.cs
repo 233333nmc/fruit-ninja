@@ -16,7 +16,10 @@ public class GameManager : MonoBehaviour
     [SerializeField] private Text statusText;
     [SerializeField] private DojoSceneBuilder dojoSceneBuilder;
     [SerializeField] private XRRuntimeRigDriver xrRuntimeRigDriver;
-    [SerializeField] private WebcamFruitXRControllerRig webcamXRControllerRig;
+    [Header("VR HUD")]
+    [SerializeField] private Vector3 hudWorldPosition = new Vector3(0f, 1.7f, -3.15f);
+    [SerializeField] private Vector2 hudCanvasSize = new Vector2(1.2f, 0.28f);
+    [SerializeField] private float hudCanvasScale = 0.0015f;
 
     public int score { get; private set; } = 0;
     private StartMenuView startMenu;
@@ -56,11 +59,7 @@ public class GameManager : MonoBehaviour
             xrRuntimeRigDriver = gameObject.AddComponent<XRRuntimeRigDriver>();
         }
 
-        if (webcamXRControllerRig == null) {
-            GameObject rigObject = new GameObject("Webcam XR Controller Rig");
-            webcamXRControllerRig = rigObject.AddComponent<WebcamFruitXRControllerRig>();
-        }
-
+        ConfigureWorldSpaceHud();
         ShowStartMenu();
     }
 
@@ -84,7 +83,8 @@ public class GameManager : MonoBehaviour
 
         score = 0;
         UpdateHud();
-        SetHudVisible(false);
+        SetScoreVisible(true);
+        SetStatusVisible(false);
 
         if (startMenu == null) {
             startMenu = gameObject.AddComponent<StartMenuView>();
@@ -256,34 +256,34 @@ public class GameManager : MonoBehaviour
 
     private void ConfigureSpawnerForMode(FruitNinjaMode mode)
     {
-        spawner.spawnedObjectScale = 0.44f;
-        spawner.minSideForce = -0.55f;
-        spawner.maxSideForce = 0.55f;
-        spawner.minDepthForce = 0.18f;
-        spawner.maxDepthForce = 0.55f;
+        spawner.spawnedObjectScale = 0.08f;
+        spawner.minSideForce = -0.18f;
+        spawner.maxSideForce = 0.18f;
+        spawner.minDepthForce = 0.04f;
+        spawner.maxDepthForce = 0.14f;
         spawner.maxLifetime = 6.2f;
         spawner.bombChance = mode == FruitNinjaMode.Zen ? 0f : mode == FruitNinjaMode.Arcade ? 0.08f : 0.05f;
 
         if (mode == FruitNinjaMode.Zen) {
-            spawner.minSpawnDelay = 0.55f;
-            spawner.maxSpawnDelay = 1.15f;
-            spawner.minForce = 5.8f;
-            spawner.maxForce = 8.2f;
+            spawner.minSpawnDelay = 0.85f;
+            spawner.maxSpawnDelay = 1.55f;
+            spawner.minForce = 4.25f;
+            spawner.maxForce = 5.75f;
         } else if (mode == FruitNinjaMode.Arcade) {
-            spawner.minSpawnDelay = 0.18f;
-            spawner.maxSpawnDelay = 0.55f;
-            spawner.minForce = 6.4f;
-            spawner.maxForce = 9.2f;
+            spawner.minSpawnDelay = 0.32f;
+            spawner.maxSpawnDelay = 0.85f;
+            spawner.minForce = 4.75f;
+            spawner.maxForce = 6.5f;
         } else if (mode == FruitNinjaMode.Battle) {
-            spawner.minSpawnDelay = 0.16f;
-            spawner.maxSpawnDelay = 0.45f;
-            spawner.minForce = 6.7f;
-            spawner.maxForce = 9.6f;
+            spawner.minSpawnDelay = 0.3f;
+            spawner.maxSpawnDelay = 0.75f;
+            spawner.minForce = 5f;
+            spawner.maxForce = 6.75f;
         } else {
-            spawner.minSpawnDelay = 0.25f;
-            spawner.maxSpawnDelay = 1f;
-            spawner.minForce = 6f;
-            spawner.maxForce = 8.8f;
+            spawner.minSpawnDelay = 0.45f;
+            spawner.maxSpawnDelay = 1.25f;
+            spawner.minForce = 4.5f;
+            spawner.maxForce = 6.25f;
         }
     }
 
@@ -304,10 +304,19 @@ public class GameManager : MonoBehaviour
 
     private void SetHudVisible(bool visible)
     {
+        SetScoreVisible(visible);
+        SetStatusVisible(visible);
+    }
+
+    private void SetScoreVisible(bool visible)
+    {
         if (scoreText != null) {
             scoreText.gameObject.SetActive(visible);
         }
+    }
 
+    private void SetStatusVisible(bool visible)
+    {
         if (statusText != null) {
             statusText.gameObject.SetActive(visible);
         }
@@ -331,7 +340,7 @@ public class GameManager : MonoBehaviour
 
     private Text CreateStatusText()
     {
-        Canvas canvas = FindObjectOfType<Canvas>();
+        Canvas canvas = GetOrCreateHudCanvas();
         if (canvas == null)
             return null;
 
@@ -353,6 +362,80 @@ public class GameManager : MonoBehaviour
         rect.sizeDelta = new Vector2(900f, 70f);
 
         return text;
+    }
+
+    private void ConfigureWorldSpaceHud()
+    {
+        Canvas canvas = GetOrCreateHudCanvas();
+        if (canvas == null)
+            return;
+
+        if (scoreText == null) {
+            scoreText = CreateHudText("Score Text", canvas.transform, new Vector2(-330f, 48f), new Vector2(240f, 90f), 56, TextAnchor.MiddleLeft);
+        } else {
+            MoveTextToHud(scoreText, canvas.transform, new Vector2(-330f, 48f), new Vector2(240f, 90f), 56, TextAnchor.MiddleLeft);
+        }
+
+        if (statusText == null) {
+            statusText = CreateHudText("Status Text", canvas.transform, new Vector2(120f, 48f), new Vector2(620f, 90f), 30, TextAnchor.MiddleRight);
+        } else {
+            MoveTextToHud(statusText, canvas.transform, new Vector2(120f, 48f), new Vector2(620f, 90f), 30, TextAnchor.MiddleRight);
+        }
+    }
+
+    private Canvas GetOrCreateHudCanvas()
+    {
+        GameObject canvasObject = GameObject.Find("VR HUD Canvas");
+        Canvas canvas = canvasObject != null ? canvasObject.GetComponent<Canvas>() : null;
+
+        if (canvas == null)
+        {
+            canvasObject = new GameObject("VR HUD Canvas");
+            canvas = canvasObject.AddComponent<Canvas>();
+            canvasObject.AddComponent<CanvasScaler>();
+            canvasObject.AddComponent<GraphicRaycaster>();
+        }
+
+        canvas.renderMode = RenderMode.WorldSpace;
+        canvas.sortingOrder = 20;
+        canvas.worldCamera = Camera.main;
+
+        RectTransform rect = canvas.GetComponent<RectTransform>();
+        rect.sizeDelta = hudCanvasSize / hudCanvasScale;
+        rect.position = hudWorldPosition;
+        rect.rotation = Quaternion.identity;
+        rect.localScale = Vector3.one * hudCanvasScale;
+
+        return canvas;
+    }
+
+    private Text CreateHudText(string name, Transform parent, Vector2 anchoredPosition, Vector2 size, int fontSize, TextAnchor alignment)
+    {
+        GameObject textObject = new GameObject(name);
+        textObject.transform.SetParent(parent, false);
+
+        Text text = textObject.AddComponent<Text>();
+        text.font = Resources.GetBuiltinResource<Font>("Arial.ttf");
+        text.fontStyle = FontStyle.Bold;
+        text.color = new Color(1f, 0.9f, 0.2f);
+
+        MoveTextToHud(text, parent, anchoredPosition, size, fontSize, alignment);
+        return text;
+    }
+
+    private void MoveTextToHud(Text text, Transform parent, Vector2 anchoredPosition, Vector2 size, int fontSize, TextAnchor alignment)
+    {
+        text.transform.SetParent(parent, false);
+        text.fontSize = fontSize;
+        text.alignment = alignment;
+        text.raycastTarget = false;
+
+        RectTransform rect = text.rectTransform;
+        rect.anchorMin = new Vector2(0.5f, 0.5f);
+        rect.anchorMax = new Vector2(0.5f, 0.5f);
+        rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.anchoredPosition = anchoredPosition;
+        rect.sizeDelta = size;
     }
 
 }

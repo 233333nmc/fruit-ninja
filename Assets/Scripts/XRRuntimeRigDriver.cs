@@ -4,13 +4,23 @@ using UnityEngine.XR;
 public class XRRuntimeRigDriver : MonoBehaviour
 {
     [SerializeField] private Camera targetCamera;
-    [SerializeField] private Vector3 rigOrigin = new Vector3(0f, 0f, -8.2f);
+    [SerializeField] private Vector3 rigOrigin = new Vector3(0f, 0f, -4.15f);
     [SerializeField] private bool logXRState = true;
 
     private InputDevice hmdDevice;
     private bool wasTracking;
 
     public bool IsTracking { get; private set; }
+
+    public Vector3 TrackingToWorldPosition(Vector3 trackingPosition)
+    {
+        return rigOrigin + trackingPosition;
+    }
+
+    public Quaternion TrackingToWorldRotation(Quaternion trackingRotation)
+    {
+        return trackingRotation;
+    }
 
     private void Awake()
     {

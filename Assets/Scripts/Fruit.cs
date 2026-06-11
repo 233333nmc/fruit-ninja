@@ -19,7 +19,7 @@ public class Fruit : MonoBehaviour
         juiceEffect = GetComponentInChildren<ParticleSystem>();
     }
 
-    private void Slice(Vector3 direction, Vector3 position, float force)
+    private void Slice(Vector3 direction, Vector3 position, Quaternion bladeRotation, float force)
     {
         if (hasBeenSliced)
             return;
@@ -35,9 +35,8 @@ public class Fruit : MonoBehaviour
         sliced.SetActive(true);
         juiceEffect.Play();
 
-        // Rotate based on the slice angle
-        float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
-        sliced.transform.rotation = Quaternion.Euler(0f, 0f, angle);
+        Vector3 sliceDirection = direction.sqrMagnitude > 0.0001f ? direction : bladeRotation * Vector3.up;
+        sliced.transform.rotation = Quaternion.LookRotation(bladeRotation * Vector3.forward, sliceDirection.normalized);
 
         Rigidbody[] slices = sliced.GetComponentsInChildren<Rigidbody>();
 
@@ -45,7 +44,7 @@ public class Fruit : MonoBehaviour
         foreach (Rigidbody slice in slices)
         {
             slice.velocity = fruitRigidbody.velocity;
-            slice.AddForceAtPosition(direction * force, position, ForceMode.Impulse);
+            slice.AddForceAtPosition(sliceDirection * force, position, ForceMode.Impulse);
         }
 
         Destroy(gameObject, 3f);
@@ -81,7 +80,7 @@ public class Fruit : MonoBehaviour
             }
 
             if (blade != null) {
-                Slice(blade.Direction, blade.Position, blade.SliceForce);
+                Slice(blade.Direction, blade.Position, blade.Rotation, blade.SliceForce);
             }
         }
     }

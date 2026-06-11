@@ -25,6 +25,8 @@
 
 # Visual Studio cache directory
 .vs/
+.vscode/
+.vsconfig
 
 # Gradle cache directory
 .gradle/
@@ -59,6 +61,13 @@ sysinfo.txt
 *.apk
 *.aab
 *.unitypackage
+
+# Source art backups / temporary exports
+/[Aa]ssets/[Mm]odels/[Bb]lender~/
+
+# Local legacy experiment kept out of the minimal project history
+/[Aa]ssets/[Ss]cripts/LegacyBackgroundFollower.cs
+/[Aa]ssets/[Ss]cripts/LegacyBackgroundFollower.cs.meta
 
 # Crashlytics generated file
 crashlytics-build.properties

@@ -9,6 +9,7 @@ namespace WebcamXR
         public Vector3 Direction { get; private set; } = Vector3.up;
         public float SliceForce => sliceForce;
         public Vector3 Position => transform.position;
+        public Quaternion Rotation => transform.rotation;
 
         public void SetDirection(Vector3 direction)
         {

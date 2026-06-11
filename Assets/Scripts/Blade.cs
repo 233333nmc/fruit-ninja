@@ -1,32 +1,44 @@
 using UnityEngine;
-using WebcamXR;
 using UnityEngine.XR;
+using WebcamXR;
 
 public class Blade : MonoBehaviour, IBladeSliceSource
 {
     public float sliceForce = 5f;
     public float minSliceVelocity = 0.01f;
+
+    [Header("3D Play Volume")]
+    [SerializeField] private Vector3 playVolumeCenter = new Vector3(0f, 1.25f, -3.5f);
+    [SerializeField] private Vector3 playVolumeSize = new Vector3(1.25f, 1.15f, 0.7f);
+
     [Header("Webcam XR")]
     [SerializeField] private bool useWebcamTracking = false;
-    [SerializeField] private bool preferRightHand = true;
-    [SerializeField] private Vector3 webcamSlicePlaneCenter = new Vector3(0f, 1.55f, -4.85f);
     [SerializeField] private Vector3 webcamRightNeutral = new Vector3(0.34f, 1.25f, 0.72f);
     [SerializeField] private Vector3 webcamLeftNeutral = new Vector3(-0.34f, 1.25f, 0.72f);
     [SerializeField] private float webcamHorizontalScale = 32.0f;
     [SerializeField] private float webcamVerticalScale = 22.0f;
+    [SerializeField] private float webcamDepthScale = 3.1f;
     [SerializeField] private float webcamPositionSmoothing = 8f;
+    [SerializeField] private float webcamDepthSmoothing = 4.5f;
     [SerializeField] private float webcamDeadZone = 0.0f;
+    [SerializeField] private float webcamDepthDeadZone = 0.04f;
     [SerializeField] private float webcamMaxSpeed = 1000f;
+    [SerializeField] private float webcamMaxDepthSpeed = 2.2f;
+
     [Header("XR Controller")]
     [SerializeField] private bool useXRControllers = true;
     [SerializeField] private bool requireXRTriggerToSlice = false;
-    [SerializeField] private Vector3 xrSlicePlaneCenter = new Vector3(0f, 1.55f, -4.85f);
-    [SerializeField] private Vector3 xrRightNeutral = new Vector3(0.28f, 1.1f, 0.55f);
-    [SerializeField] private Vector3 xrLeftNeutral = new Vector3(-0.28f, 1.1f, 0.55f);
-    [SerializeField] private float xrHorizontalScale = 3.2f;
-    [SerializeField] private float xrVerticalScale = 3.0f;
-    [SerializeField] private float desktopSlicePlaneZ = -4.85f;
-    [SerializeField] private Vector3 sliceCollider3DSize = new Vector3(0.9f, 0.9f, 3.6f);
+    [SerializeField] private Vector3 xrBladeTipOffset = new Vector3(0f, 0f, 0.32f);
+    [SerializeField] private Vector3 xrBladeLocalAxis = Vector3.forward;
+    [SerializeField] private Vector3 xrBladeRotationOffsetEuler = new Vector3(-6f, 0f, 0f);
+    [SerializeField] private bool clampXRToPlayVolume = false;
+    [SerializeField] private bool showTrailInXR = false;
+
+    [Header("Desktop")]
+    [SerializeField] private float desktopSlicePlaneZ = -3.35f;
+
+    [Header("Collision")]
+    [SerializeField] private Vector3 sliceCollider3DSize = new Vector3(0.055f, 0.52f, 0.055f);
 
     private Camera mainCamera;
     private BoxCollider sliceCollider;
@@ -35,26 +47,34 @@ public class Blade : MonoBehaviour, IBladeSliceSource
     private TrailRenderer sliceTrail;
     private WebcamTrackingReceiver webcamReceiver;
     private BladeVisuals bladeVisuals;
-    private bool webcamSliceActive;
-    private bool xrSliceActive;
-    private Vector3 smoothedWebcamBladePosition;
-    private Vector3 smoothedWebcamLeftBladePosition;
-    private bool hasSmoothedWebcamBladePosition;
-    private bool hasSmoothedWebcamLeftBladePosition;
-    private Vector3 leftBladeDirection;
-    private Vector3 previousLeftBladePosition;
-    private bool hasPreviousLeftBladePosition;
+    private XRRuntimeRigDriver xrRuntimeRigDriver;
     private InputDevice rightXRDevice;
     private InputDevice leftXRDevice;
-    private Vector3 lastXRLeftBladePosition;
-    private bool hasXRLeftBladePosition;
+    private bool webcamSliceActive;
+    private bool xrSliceActive;
     private bool bladeVisualsDrivenThisFrame;
+    private bool leftSlicing;
+    private Vector3 smoothedWebcamRightPosition;
+    private Vector3 smoothedWebcamLeftPosition;
+    private bool hasSmoothedWebcamRightPosition;
+    private bool hasSmoothedWebcamLeftPosition;
+    private Vector3 previousLeftBladePosition;
+    private Quaternion leftBladeRotation = Quaternion.identity;
+    private Vector3 leftBladeDirection;
+    private bool hasPreviousLeftBladePosition;
+    private Vector3 lastRightBladePosition;
+    private Vector3 lastLeftBladePosition;
+    private Quaternion lastRightBladeRotation = Quaternion.identity;
+    private Quaternion lastLeftBladeRotation = Quaternion.identity;
+    private bool hasLastRightBladePosition;
+    private bool hasLastLeftBladePosition;
 
     public Vector3 direction { get; private set; }
     public bool slicing { get; private set; }
     public Vector3 Direction => direction;
     public float SliceForce => sliceForce;
     public Vector3 Position => transform.position;
+    public Quaternion Rotation => transform.rotation;
 
     private void Awake()
     {
@@ -63,7 +83,13 @@ public class Blade : MonoBehaviour, IBladeSliceSource
         ConfigureLeftSliceCollider();
         sliceTrail = GetComponentInChildren<TrailRenderer>();
         bladeVisuals = FindObjectOfType<BladeVisuals>();
+        if (bladeVisuals == null)
+        {
+            GameObject visualsObject = new GameObject("Runtime Blade Visuals");
+            bladeVisuals = visualsObject.AddComponent<BladeVisuals>();
+        }
 
+        xrRuntimeRigDriver = FindObjectOfType<XRRuntimeRigDriver>();
         webcamReceiver = FindObjectOfType<WebcamTrackingReceiver>();
 
         if (webcamReceiver == null)
@@ -75,76 +101,96 @@ public class Blade : MonoBehaviour, IBladeSliceSource
 
     private void OnEnable()
     {
-        StopSlice();
+        StopAllSlices();
     }
 
     private void OnDisable()
     {
-        StopSlice();
+        StopAllSlices();
     }
 
     private void Update()
     {
         bladeVisualsDrivenThisFrame = false;
 
-        if (TryUpdateXRControllerSlice()) {
+        if (TryUpdateXRControllerSlices())
             return;
-        }
 
-        if (xrSliceActive) {
-            StopSlice();
+        if (xrSliceActive)
+        {
+            StopAllSlices();
             xrSliceActive = false;
         }
 
-        if (TryUpdateWebcamSlice()) {
+        if (TryUpdateWebcamSlices())
             return;
-        }
 
-        if (webcamSliceActive) {
-            StopSlice();
+        if (webcamSliceActive)
+        {
+            StopAllSlices();
             webcamSliceActive = false;
         }
 
-        if (Input.GetMouseButtonDown(0)) {
-            StartSlice();
-        } else if (Input.GetMouseButtonUp(0)) {
-            StopSlice();
-        } else if (slicing) {
-            ContinueSlice();
+        UpdateMouseSlice();
+    }
+
+    private void UpdateMouseSlice()
+    {
+        if (Input.GetMouseButtonDown(0))
+        {
+            BladePose3D pose = CreateMousePose(Vector3.zero, true);
+            ApplyRightPose(pose);
+            slicing = true;
+            sliceTrail.enabled = true;
+            sliceTrail.Clear();
+        }
+        else if (Input.GetMouseButtonUp(0))
+        {
+            StopRightSlice();
+        }
+        else if (slicing)
+        {
+            BladePose3D pose = CreateMousePose(transform.position, true);
+            ApplyRightPose(pose);
         }
     }
 
-    private void StartSlice()
+    private BladePose3D CreateMousePose(Vector3 previousPosition, bool active)
     {
         Vector3 position = PointerToBladeWorldPosition(Input.mousePosition);
-        transform.position = position;
-
-        slicing = true;
-        sliceCollider.enabled = true;
-        sliceTrail.enabled = true;
-        sliceTrail.Clear();
+        Vector3 movement = previousPosition == Vector3.zero ? Vector3.zero : position - previousPosition;
+        Quaternion rotation = MovementToBladeRotation(movement, transform.rotation);
+        return new BladePose3D(BladeHand.Right, position, rotation, movement, active);
     }
 
-    private void StopSlice()
+    private void StopAllSlices()
+    {
+        StopRightSlice();
+        StopLeftSlice();
+    }
+
+    private void StopRightSlice()
     {
         slicing = false;
-        sliceCollider.enabled = false;
-        sliceTrail.enabled = false;
+
+        if (sliceCollider != null)
+            sliceCollider.enabled = false;
+
+        if (sliceTrail != null)
+            sliceTrail.enabled = false;
     }
 
-    private void ContinueSlice()
+    private void StopLeftSlice()
     {
-        Vector3 newPosition = PointerToBladeWorldPosition(Input.mousePosition);
-        direction = newPosition - transform.position;
+        leftSlicing = false;
 
-        float velocity = direction.magnitude / Time.deltaTime;
-        sliceCollider.enabled = velocity > minSliceVelocity;
+        if (leftSliceCollider != null)
+            leftSliceCollider.enabled = false;
 
-        transform.position = newPosition;
-        UpdateBladeVisuals(true);
+        hasPreviousLeftBladePosition = false;
     }
 
-    private bool TryUpdateWebcamSlice()
+    private bool TryUpdateWebcamSlices()
     {
         if (!useWebcamTracking || webcamReceiver == null || !webcamReceiver.HasFreshFrame)
             return false;
@@ -153,158 +199,166 @@ public class Blade : MonoBehaviour, IBladeSliceSource
         if (frame == null || !frame.calibrated)
             return false;
 
-        HandTrackingData rightHand = frame.right;
-        HandTrackingData leftHand = frame.left;
-        bool hasRight = rightHand != null && rightHand.tracked;
-        bool hasLeft = leftHand != null && leftHand.tracked;
+        bool rightTracked = frame.right != null && frame.right.tracked;
+        bool leftTracked = frame.left != null && frame.left.tracked;
 
-        if (!hasRight && !hasLeft)
+        if (!rightTracked && !leftTracked)
             return false;
 
-        Vector3 targetPosition = transform.position;
-        if (hasRight) {
-            Vector3 handPosition = rightHand.PositionVector(webcamRightNeutral);
-            targetPosition = SmoothWebcamTarget(WebcamHandToWorld(handPosition, webcamRightNeutral), true);
-        } else if (hasLeft) {
-            Vector3 handPosition = leftHand.PositionVector(webcamLeftNeutral);
-            targetPosition = SmoothWebcamTarget(WebcamHandToWorld(handPosition, webcamLeftNeutral), false);
-        }
+        webcamSliceActive = true;
 
-        if (!slicing)
+        if (rightTracked)
         {
-            transform.position = targetPosition;
-            slicing = true;
-            webcamSliceActive = true;
-            sliceTrail.enabled = true;
-            sliceTrail.Clear();
+            BladePose3D rightPose = CreateWebcamPose(BladeHand.Right, frame.right, webcamRightNeutral);
+            ApplyRightPose(rightPose);
+        }
+        else
+        {
+            StopRightSlice();
         }
 
-        Vector3 newPosition = targetPosition;
-        direction = newPosition - transform.position;
-
-        float velocity = Time.deltaTime > 0f ? direction.magnitude / Time.deltaTime : 0f;
-        sliceCollider.enabled = velocity > minSliceVelocity;
-        transform.position = newPosition;
-
-        bool leftActive = false;
-        Vector3 leftPosition = new Vector3(-newPosition.x, newPosition.y - 0.5f, newPosition.z - 0.25f);
-        if (hasLeft) {
-            Vector3 leftHandPosition = leftHand.PositionVector(webcamLeftNeutral);
-            leftPosition = SmoothWebcamTarget(WebcamHandToWorld(leftHandPosition, webcamLeftNeutral), false);
-            UpdateLeftSliceCollider(leftPosition);
-            leftActive = leftSliceCollider != null && leftSliceCollider.enabled;
-        } else if (leftSliceCollider != null) {
-            leftSliceCollider.enabled = false;
+        if (leftTracked)
+        {
+            BladePose3D leftPose = CreateWebcamPose(BladeHand.Left, frame.left, webcamLeftNeutral);
+            ApplyLeftPose(leftPose);
+        }
+        else
+        {
+            StopLeftSlice();
         }
 
-        if (bladeVisuals != null) {
-            bladeVisuals.SetBladePoses(newPosition, true, leftPosition, hasLeft);
-            bladeVisualsDrivenThisFrame = true;
-        }
+        UpdateBladeVisualsFromLastPoses(rightTracked, leftTracked);
         return true;
     }
 
-    private Vector3 SmoothWebcamTarget(Vector3 targetPosition, bool rightHand)
+    private BladePose3D CreateWebcamPose(BladeHand hand, HandTrackingData handData, Vector3 neutral)
     {
-        Vector3 smoothedPosition = rightHand ? smoothedWebcamBladePosition : smoothedWebcamLeftBladePosition;
-        bool hasSmoothedPosition = rightHand ? hasSmoothedWebcamBladePosition : hasSmoothedWebcamLeftBladePosition;
+        Vector3 targetPosition = WebcamHandToWorld(handData.PositionVector(neutral), neutral);
+        Vector3 smoothedPosition = SmoothWebcamTarget(targetPosition, hand);
+        Vector3 previousPosition = hand == BladeHand.Right && hasLastRightBladePosition
+            ? lastRightBladePosition
+            : hand == BladeHand.Left && hasLastLeftBladePosition
+                ? lastLeftBladePosition
+                : smoothedPosition;
+        Vector3 movement = smoothedPosition - previousPosition;
+        Quaternion previousRotation = hand == BladeHand.Right ? lastRightBladeRotation : lastLeftBladeRotation;
+        Quaternion rotation = MovementToBladeRotation(movement, previousRotation);
+        return new BladePose3D(hand, smoothedPosition, rotation, movement, true);
+    }
+
+    private Vector3 SmoothWebcamTarget(Vector3 targetPosition, BladeHand hand)
+    {
+        bool rightHand = hand == BladeHand.Right;
+        Vector3 smoothedPosition = rightHand ? smoothedWebcamRightPosition : smoothedWebcamLeftPosition;
+        bool hasSmoothedPosition = rightHand ? hasSmoothedWebcamRightPosition : hasSmoothedWebcamLeftPosition;
 
         if (!hasSmoothedPosition)
         {
-            smoothedPosition = targetPosition;
-            hasSmoothedPosition = true;
-            SaveSmoothedWebcamTarget(rightHand, smoothedPosition, hasSmoothedPosition);
+            SaveSmoothedWebcamTarget(hand, targetPosition, true);
             return targetPosition;
         }
 
         Vector3 delta = targetPosition - smoothedPosition;
-        if (delta.magnitude < webcamDeadZone)
-            return targetPosition;
+        Vector3 speedLimitedTarget = smoothedPosition;
+        Vector3 planarDelta = new Vector3(delta.x, delta.y, 0f);
 
-        Vector3 speedLimitedTarget = targetPosition;
-        if (webcamMaxSpeed > 0f && webcamMaxSpeed < 999f) {
-            float maxStep = webcamMaxSpeed * Time.deltaTime;
-            speedLimitedTarget = smoothedPosition + Vector3.ClampMagnitude(delta, maxStep);
+        if (planarDelta.magnitude >= webcamDeadZone)
+        {
+            if (webcamMaxSpeed > 0f && webcamMaxSpeed < 999f)
+                planarDelta = Vector3.ClampMagnitude(planarDelta, webcamMaxSpeed * Time.deltaTime);
+
+            speedLimitedTarget += planarDelta;
         }
-        float smoothing = 1f - Mathf.Exp(-webcamPositionSmoothing * Time.deltaTime);
-        smoothedPosition = Vector3.Lerp(smoothedPosition, speedLimitedTarget, smoothing);
-        SaveSmoothedWebcamTarget(rightHand, smoothedPosition, hasSmoothedPosition);
+
+        if (Mathf.Abs(delta.z) >= webcamDepthDeadZone)
+        {
+            float depthStep = delta.z;
+            if (webcamMaxDepthSpeed > 0f)
+                depthStep = Mathf.Clamp(depthStep, -webcamMaxDepthSpeed * Time.deltaTime, webcamMaxDepthSpeed * Time.deltaTime);
+
+            speedLimitedTarget.z += depthStep;
+        }
+
+        float planarSmoothing = 1f - Mathf.Exp(-webcamPositionSmoothing * Time.deltaTime);
+        float depthSmoothing = 1f - Mathf.Exp(-webcamDepthSmoothing * Time.deltaTime);
+        smoothedPosition = new Vector3(
+            Mathf.Lerp(smoothedPosition.x, speedLimitedTarget.x, planarSmoothing),
+            Mathf.Lerp(smoothedPosition.y, speedLimitedTarget.y, planarSmoothing),
+            Mathf.Lerp(smoothedPosition.z, speedLimitedTarget.z, depthSmoothing));
+        smoothedPosition = ClampToPlayVolume(smoothedPosition);
+        SaveSmoothedWebcamTarget(hand, smoothedPosition, true);
         return smoothedPosition;
     }
 
-    private void SaveSmoothedWebcamTarget(bool rightHand, Vector3 position, bool hasPosition)
+    private void SaveSmoothedWebcamTarget(BladeHand hand, Vector3 position, bool hasPosition)
     {
-        if (rightHand)
+        if (hand == BladeHand.Right)
         {
-            smoothedWebcamBladePosition = position;
-            hasSmoothedWebcamBladePosition = hasPosition;
+            smoothedWebcamRightPosition = position;
+            hasSmoothedWebcamRightPosition = hasPosition;
         }
         else
         {
-            smoothedWebcamLeftBladePosition = position;
-            hasSmoothedWebcamLeftBladePosition = hasPosition;
+            smoothedWebcamLeftPosition = position;
+            hasSmoothedWebcamLeftPosition = hasPosition;
         }
     }
 
-    private bool TryUpdateXRControllerSlice()
+    private bool TryUpdateXRControllerSlices()
     {
         if (!useXRControllers)
             return false;
 
-        if (!TryGetXRBladePosition(XRNode.RightHand, xrRightNeutral, out Vector3 rightPosition, out bool rightPressed))
+        bool hasRight = TryGetXRBladePose(BladeHand.Right, out BladePose3D rightPose, out bool rightPressed);
+        bool hasLeft = TryGetXRBladePose(BladeHand.Left, out BladePose3D leftPose, out bool leftPressed);
+
+        if (!hasRight && !hasLeft)
             return false;
 
-        bool shouldSlice = !requireXRTriggerToSlice || rightPressed;
-        if (!shouldSlice)
-            return false;
+        xrSliceActive = true;
 
-        if (!slicing)
+        bool rightActive = hasRight && (!requireXRTriggerToSlice || rightPressed);
+        bool leftActive = hasLeft && (!requireXRTriggerToSlice || leftPressed);
+
+        if (hasRight)
         {
-            transform.position = rightPosition;
-            slicing = true;
-            xrSliceActive = true;
-            sliceTrail.enabled = true;
-            sliceTrail.Clear();
+            rightPose = new BladePose3D(BladeHand.Right, rightPose.Position, rightPose.Rotation, rightPose.Direction, rightActive);
+            ApplyRightPose(rightPose);
+        }
+        else
+        {
+            StopRightSlice();
         }
 
-        direction = rightPosition - transform.position;
-        float velocity = Time.deltaTime > 0f ? direction.magnitude / Time.deltaTime : 0f;
-        sliceCollider.enabled = velocity > minSliceVelocity;
-        transform.position = rightPosition;
-
-        if (TryGetXRBladePosition(XRNode.LeftHand, xrLeftNeutral, out Vector3 leftPosition, out bool leftPressed))
+        if (hasLeft)
         {
-            lastXRLeftBladePosition = leftPosition;
-            hasXRLeftBladePosition = true;
-            if (bladeVisuals != null) {
-                bladeVisuals.SetBladePoses(rightPosition, true, leftPosition, !requireXRTriggerToSlice || leftPressed);
-                bladeVisualsDrivenThisFrame = true;
-            }
+            leftPose = new BladePose3D(BladeHand.Left, leftPose.Position, leftPose.Rotation, leftPose.Direction, leftActive);
+            ApplyLeftPose(leftPose);
         }
-        else if (bladeVisuals != null)
+        else
         {
-            Vector3 fallbackLeft = hasXRLeftBladePosition ? lastXRLeftBladePosition : new Vector3(-rightPosition.x, rightPosition.y - 0.5f, rightPosition.z - 0.25f);
-            bladeVisuals.SetBladePoses(rightPosition, true, fallbackLeft, false);
-            bladeVisualsDrivenThisFrame = true;
+            StopLeftSlice();
         }
 
+        UpdateBladeVisualsFromLastPoses(hasRight, hasLeft);
         return true;
     }
 
-    private bool TryGetXRBladePosition(XRNode node, Vector3 neutral, out Vector3 bladePosition, out bool triggerPressed)
+    private bool TryGetXRBladePose(BladeHand hand, out BladePose3D pose, out bool triggerPressed)
     {
-        InputDevice device = node == XRNode.RightHand ? rightXRDevice : leftXRDevice;
-        if (!device.isValid) {
+        XRNode node = hand == BladeHand.Right ? XRNode.RightHand : XRNode.LeftHand;
+        InputDevice device = hand == BladeHand.Right ? rightXRDevice : leftXRDevice;
+        if (!device.isValid)
+        {
             device = InputDevices.GetDeviceAtXRNode(node);
-            if (node == XRNode.RightHand) {
+            if (hand == BladeHand.Right)
                 rightXRDevice = device;
-            } else {
+            else
                 leftXRDevice = device;
-            }
         }
 
+        pose = new BladePose3D(hand, Vector3.zero, Quaternion.identity, Vector3.zero, false);
         triggerPressed = false;
-        bladePosition = Vector3.zero;
 
         if (!device.isValid)
             return false;
@@ -312,56 +366,130 @@ public class Blade : MonoBehaviour, IBladeSliceSource
         if (!device.TryGetFeatureValue(CommonUsages.devicePosition, out Vector3 localPosition))
             return false;
 
-        if (device.TryGetFeatureValue(CommonUsages.triggerButton, out bool triggerButton)) {
+        if (!device.TryGetFeatureValue(CommonUsages.deviceRotation, out Quaternion localRotation))
+            localRotation = Quaternion.identity;
+
+        if (device.TryGetFeatureValue(CommonUsages.triggerButton, out bool triggerButton))
             triggerPressed = triggerButton;
-        } else if (device.TryGetFeatureValue(CommonUsages.gripButton, out bool gripButton)) {
+        else if (device.TryGetFeatureValue(CommonUsages.gripButton, out bool gripButton))
             triggerPressed = gripButton;
-        } else {
+        else
             triggerPressed = true;
+
+        if (xrRuntimeRigDriver == null)
+            xrRuntimeRigDriver = FindObjectOfType<XRRuntimeRigDriver>();
+
+        Vector3 controllerWorldPosition = xrRuntimeRigDriver != null
+            ? xrRuntimeRigDriver.TrackingToWorldPosition(localPosition)
+            : localPosition;
+        Quaternion controllerWorldRotation = xrRuntimeRigDriver != null
+            ? xrRuntimeRigDriver.TrackingToWorldRotation(localRotation)
+            : localRotation;
+
+        Quaternion correctedControllerRotation = controllerWorldRotation * Quaternion.Euler(xrBladeRotationOffsetEuler);
+        Vector3 bladeAxis = correctedControllerRotation * SafeAxis(xrBladeLocalAxis);
+        Vector3 bladePosition = controllerWorldPosition + correctedControllerRotation * xrBladeTipOffset;
+        if (clampXRToPlayVolume)
+            bladePosition = ClampToPlayVolume(bladePosition);
+
+        Vector3 previousPosition = hand == BladeHand.Right && hasLastRightBladePosition
+            ? lastRightBladePosition
+            : hand == BladeHand.Left && hasLastLeftBladePosition
+                ? lastLeftBladePosition
+                : bladePosition;
+        Vector3 movement = bladePosition - previousPosition;
+        Quaternion bladeRotation = BladeAxisToRotation(bladeAxis, correctedControllerRotation * Vector3.up);
+        pose = new BladePose3D(hand, bladePosition, bladeRotation, movement, true);
+        return true;
+    }
+
+    private void ApplyRightPose(BladePose3D pose)
+    {
+        direction = pose.Direction;
+        transform.SetPositionAndRotation(pose.Position, pose.Rotation);
+        slicing = pose.Active;
+
+        float velocity = Time.deltaTime > 0f ? pose.Direction.magnitude / Time.deltaTime : 0f;
+        sliceCollider.enabled = pose.Active && velocity > minSliceVelocity;
+
+        bool showTrail = pose.Active && (!xrSliceActive || showTrailInXR);
+        if (showTrail && sliceTrail != null && !sliceTrail.enabled)
+        {
+            sliceTrail.enabled = true;
+            sliceTrail.Clear();
+        }
+        else if (!showTrail && sliceTrail != null)
+        {
+            sliceTrail.enabled = false;
         }
 
-        Vector3 offset = localPosition - neutral;
-        bladePosition = new Vector3(
-            xrSlicePlaneCenter.x + offset.x * xrHorizontalScale,
-            xrSlicePlaneCenter.y + offset.y * xrVerticalScale,
-            xrSlicePlaneCenter.z);
-        return true;
+        lastRightBladePosition = pose.Position;
+        lastRightBladeRotation = pose.Rotation;
+        hasLastRightBladePosition = true;
+    }
+
+    private void ApplyLeftPose(BladePose3D pose)
+    {
+        if (leftSliceObject == null || leftSliceCollider == null)
+            return;
+
+        if (!hasPreviousLeftBladePosition)
+        {
+            previousLeftBladePosition = pose.Position;
+            hasPreviousLeftBladePosition = true;
+        }
+
+        leftBladeDirection = pose.Position - previousLeftBladePosition;
+        leftBladeRotation = pose.Rotation;
+        leftSlicing = pose.Active;
+        float velocity = Time.deltaTime > 0f ? leftBladeDirection.magnitude / Time.deltaTime : 0f;
+        leftSliceObject.transform.SetPositionAndRotation(pose.Position, pose.Rotation);
+        leftSliceCollider.enabled = pose.Active && velocity > minSliceVelocity;
+        previousLeftBladePosition = pose.Position;
+        lastLeftBladePosition = pose.Position;
+        lastLeftBladeRotation = pose.Rotation;
+        hasLastLeftBladePosition = true;
     }
 
     private Vector3 WebcamHandToWorld(Vector3 handPosition, Vector3 neutralPosition)
     {
         Vector3 offset = handPosition - neutralPosition;
-        return new Vector3(
-            webcamSlicePlaneCenter.x + offset.x * webcamHorizontalScale,
-            webcamSlicePlaneCenter.y + offset.y * webcamVerticalScale,
-            webcamSlicePlaneCenter.z);
+        return ClampToPlayVolume(new Vector3(
+            playVolumeCenter.x + offset.x * webcamHorizontalScale,
+            playVolumeCenter.y + offset.y * webcamVerticalScale,
+            playVolumeCenter.z + offset.z * webcamDepthScale));
     }
 
     private Vector3 PointerToBladeWorldPosition(Vector3 screenPosition)
     {
-        if (mainCamera.orthographic) {
+        if (mainCamera == null)
+            mainCamera = Camera.main;
+
+        if (mainCamera == null)
+            return ClampToPlayVolume(new Vector3(0f, playVolumeCenter.y, desktopSlicePlaneZ));
+
+        if (mainCamera.orthographic)
+        {
             Vector3 position = mainCamera.ScreenToWorldPoint(screenPosition);
             position.z = desktopSlicePlaneZ;
-            return position;
+            return ClampToPlayVolume(position);
         }
 
         Ray ray = mainCamera.ScreenPointToRay(screenPosition);
         Plane slicePlane = new Plane(Vector3.back, new Vector3(0f, 0f, desktopSlicePlaneZ));
-        if (slicePlane.Raycast(ray, out float enter)) {
-            return ray.GetPoint(enter);
-        }
+        if (slicePlane.Raycast(ray, out float enter))
+            return ClampToPlayVolume(ray.GetPoint(enter));
 
         Vector3 fallback = mainCamera.ScreenToWorldPoint(new Vector3(screenPosition.x, screenPosition.y, Mathf.Abs(mainCamera.transform.position.z)));
         fallback.z = desktopSlicePlaneZ;
-        return fallback;
+        return ClampToPlayVolume(fallback);
     }
 
     private void ConfigureSliceCollider()
     {
         Collider existingCollider = GetComponent<Collider>();
-        if (existingCollider != null) {
+        if (existingCollider != null)
             Destroy(existingCollider);
-        }
 
         sliceCollider = gameObject.AddComponent<BoxCollider>();
         sliceCollider.isTrigger = true;
@@ -371,7 +499,7 @@ public class Blade : MonoBehaviour, IBladeSliceSource
 
     private void ConfigureLeftSliceCollider()
     {
-        leftSliceObject = new GameObject("Left Webcam Slice Collider");
+        leftSliceObject = new GameObject("Left Blade Slice Collider");
         leftSliceObject.transform.SetParent(transform.parent, false);
         leftSliceObject.tag = gameObject.tag;
 
@@ -381,30 +509,80 @@ public class Blade : MonoBehaviour, IBladeSliceSource
         leftSliceCollider = leftSliceObject.AddComponent<BoxCollider>();
         leftSliceCollider.isTrigger = true;
         leftSliceCollider.size = sliceCollider3DSize;
+        leftSliceCollider.center = Vector3.zero;
         leftSliceCollider.enabled = false;
-    }
-
-    private void UpdateLeftSliceCollider(Vector3 leftPosition)
-    {
-        if (leftSliceObject == null || leftSliceCollider == null)
-            return;
-
-        if (!hasPreviousLeftBladePosition)
-        {
-            previousLeftBladePosition = leftPosition;
-            hasPreviousLeftBladePosition = true;
-        }
-
-        leftBladeDirection = leftPosition - previousLeftBladePosition;
-        float velocity = Time.deltaTime > 0f ? leftBladeDirection.magnitude / Time.deltaTime : 0f;
-        leftSliceObject.transform.position = leftPosition;
-        leftSliceCollider.enabled = velocity > minSliceVelocity;
-        previousLeftBladePosition = leftPosition;
     }
 
     public Vector3 GetLeftBladeDirection()
     {
         return leftBladeDirection;
+    }
+
+    public Quaternion GetLeftBladeRotation()
+    {
+        return leftBladeRotation;
+    }
+
+    private void LateUpdate()
+    {
+        if (!bladeVisualsDrivenThisFrame)
+            UpdateBladeVisualsFromLastPoses(hasLastRightBladePosition, hasLastLeftBladePosition);
+    }
+
+    private void UpdateBladeVisualsFromLastPoses(bool hasRightPose, bool hasLeftPose)
+    {
+        if (bladeVisuals == null)
+            return;
+
+        Vector3 rightPosition = hasRightPose ? lastRightBladePosition : transform.position;
+        Quaternion rightRotation = hasRightPose ? lastRightBladeRotation : transform.rotation;
+        bool rightActive = slicing;
+
+        if (hasLeftPose)
+        {
+            bladeVisuals.SetBladePoses(rightPosition, rightRotation, rightActive, lastLeftBladePosition, lastLeftBladeRotation, leftSlicing);
+        }
+        else
+        {
+            bladeVisuals.SetRightBladePose(rightPosition, rightRotation, rightActive);
+        }
+
+        bladeVisualsDrivenThisFrame = true;
+    }
+
+    private Vector3 ClampToPlayVolume(Vector3 position)
+    {
+        Vector3 halfSize = playVolumeSize * 0.5f;
+        return new Vector3(
+            Mathf.Clamp(position.x, playVolumeCenter.x - halfSize.x, playVolumeCenter.x + halfSize.x),
+            Mathf.Clamp(position.y, playVolumeCenter.y - halfSize.y, playVolumeCenter.y + halfSize.y),
+            Mathf.Clamp(position.z, playVolumeCenter.z - halfSize.z, playVolumeCenter.z + halfSize.z));
+    }
+
+    private static Quaternion MovementToBladeRotation(Vector3 movementDirection, Quaternion fallback)
+    {
+        if (movementDirection.sqrMagnitude < 0.0001f)
+            return fallback == Quaternion.identity ? Quaternion.LookRotation(Vector3.forward, Vector3.up) : fallback;
+
+        return Quaternion.LookRotation(Vector3.forward, movementDirection.normalized);
+    }
+
+    private static Vector3 SafeAxis(Vector3 axis)
+    {
+        return axis.sqrMagnitude > 0.0001f ? axis.normalized : Vector3.forward;
+    }
+
+    private static Quaternion BladeAxisToRotation(Vector3 bladeAxis, Vector3 forwardHint)
+    {
+        Vector3 up = bladeAxis.sqrMagnitude > 0.0001f ? bladeAxis.normalized : Vector3.up;
+        Vector3 forward = Vector3.ProjectOnPlane(forwardHint, up);
+        if (forward.sqrMagnitude < 0.0001f)
+            forward = Vector3.ProjectOnPlane(Vector3.forward, up);
+
+        if (forward.sqrMagnitude < 0.0001f)
+            forward = Vector3.right;
+
+        return Quaternion.LookRotation(forward.normalized, up);
     }
 
     private class LeftBladeProxy : MonoBehaviour, IBladeSliceSource
@@ -414,26 +592,11 @@ public class Blade : MonoBehaviour, IBladeSliceSource
         public Vector3 Direction => source != null ? source.GetLeftBladeDirection() : Vector3.zero;
         public float SliceForce => source != null ? source.sliceForce : 5f;
         public Vector3 Position => transform.position;
+        public Quaternion Rotation => source != null ? source.GetLeftBladeRotation() : transform.rotation;
 
         public void Init(Blade blade)
         {
             source = blade;
         }
     }
-
-    private void LateUpdate()
-    {
-        if (!bladeVisualsDrivenThisFrame) {
-            UpdateBladeVisuals(slicing);
-        }
-    }
-
-    private void UpdateBladeVisuals(bool active)
-    {
-        if (bladeVisuals != null) {
-            bladeVisuals.SetRightBladePose(transform.position, active);
-            bladeVisualsDrivenThisFrame = true;
-        }
-    }
-
 }
