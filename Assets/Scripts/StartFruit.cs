@@ -12,6 +12,16 @@ public class StartFruit : MonoBehaviour
 
     private void OnTriggerEnter(Collider other)
     {
+        TryStart(other);
+    }
+
+    private void OnTriggerStay(Collider other)
+    {
+        TryStart(other);
+    }
+
+    private void TryStart(Collider other)
+    {
         if (started || !other.CompareTag("Player"))
             return;
 

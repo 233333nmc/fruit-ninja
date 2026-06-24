@@ -6,9 +6,9 @@ public class DojoSceneBuilder : MonoBehaviour
 {
     [SerializeField] private Spawner spawner;
     [SerializeField] private Camera targetCamera;
-    [SerializeField] private Vector3 desktopCameraPosition = new Vector3(0f, 0f, -20f);
+    [SerializeField] private Vector3 desktopCameraPosition = new Vector3(0f, 0.85f, -20f);
     [SerializeField] private Quaternion desktopCameraRotation = Quaternion.identity;
-    [SerializeField] private float desktopOrthographicSize = 10f;
+    [SerializeField] private float desktopOrthographicSize = 2.0f;
 
     [Header("Legacy Background Board")]
     [SerializeField] private string backgroundName = "Background";
@@ -17,12 +17,12 @@ public class DojoSceneBuilder : MonoBehaviour
     [Header("Complete Environment Scene")]
     [SerializeField] private bool loadCompleteEnvironmentScene = true;
     [SerializeField] private string environmentScenePath = "Assets/Stylized Asia RG/Scenes/Demo Stylized Asia.unity";
-    [SerializeField] private Vector3 environmentViewPosition = new Vector3(0f, 1.6f, 4.85f);
-    [SerializeField] private Vector3 environmentViewEulerAngles = new Vector3(0f, -60f, 0f);
-    [SerializeField] private float environmentPlayerShiftDistance = 46f;
+    [SerializeField] private Vector3 environmentViewPosition = new Vector3(-0.85f, 1.6f, 4.85f);
+    [SerializeField] private Vector3 environmentViewEulerAngles = new Vector3(0f, -42f, 0f);
+    [SerializeField] private float environmentPlayerShiftDistance = 43f;
     [SerializeField] private float environmentReferenceGroundY = 9.9f;
     [SerializeField] private float environmentTargetGroundY = -3.5f;
-    [SerializeField] private float environmentScale = 1f;
+    [SerializeField] private float environmentScale = 0.9f;
     [SerializeField] private float environmentCullRadius = 42f;
     [SerializeField] private float vrNearClipPlane = 0.01f;
 
@@ -107,13 +107,13 @@ public class DojoSceneBuilder : MonoBehaviour
         if (spawner == null)
             return;
 
-        spawner.transform.position = new Vector3(0f, 0.6f, -3.25f);
+        spawner.transform.position = new Vector3(0f, -0.85f, -14f);
         spawner.transform.localScale = Vector3.one;
 
         BoxCollider box = spawner.GetComponent<BoxCollider>();
         if (box != null)
         {
-            box.size = new Vector3(0.95f, 0.08f, 0.25f);
+            box.size = new Vector3(2.4f, 0.08f, 0.38f);
             box.center = Vector3.zero;
         }
     }

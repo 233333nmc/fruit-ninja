@@ -10,8 +10,10 @@ public class Bomb : MonoBehaviour
         if (body != null)
             body.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
 
+        foreach (TrailRenderer trail in GetComponentsInChildren<TrailRenderer>(true))
+            Destroy(trail);
+
         DownloadedArtLibrary.ApplyBombVisuals(gameObject);
-        AddPenaltyLabel();
     }
 
     private void OnTriggerEnter(Collider other)
@@ -69,21 +71,6 @@ public class Bomb : MonoBehaviour
         DownloadedArtLibrary.PlayBombHitVfx(position, direction);
         GameManager.Instance.HandleBombHit(position);
         Destroy(gameObject, 0.25f);
-    }
-
-    private void AddPenaltyLabel()
-    {
-        GameObject labelObject = new GameObject("Bomb Penalty Label");
-        labelObject.transform.SetParent(transform, false);
-        labelObject.transform.localPosition = new Vector3(0f, 0.8f, 0f);
-
-        TextMesh label = labelObject.AddComponent<TextMesh>();
-        label.text = "-10";
-        label.fontSize = 72;
-        label.characterSize = 0.06f;
-        label.anchor = TextAnchor.MiddleCenter;
-        label.alignment = TextAlignment.Center;
-        label.color = new Color(1f, 0.12f, 0.05f);
     }
 
 }

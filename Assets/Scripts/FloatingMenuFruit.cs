@@ -19,6 +19,16 @@ public class FloatingMenuFruit : MonoBehaviour
     {
         float offset = Mathf.Sin(Time.time * floatSpeed + phase) * floatAmplitude;
         transform.position = startPosition + Vector3.up * offset;
-        transform.Rotate(Vector3.up, spinSpeed * Time.deltaTime, Space.World);
+
+        foreach (Renderer renderer in GetComponentsInChildren<Renderer>(true))
+        {
+            if (renderer == null || renderer.transform == transform)
+                continue;
+
+            if (renderer.GetComponentInParent<ModeSelectionRing>() != null)
+                continue;
+
+            renderer.transform.Rotate(Vector3.up, spinSpeed * Time.deltaTime, Space.World);
+        }
     }
 }

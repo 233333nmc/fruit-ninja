@@ -69,6 +69,9 @@ public class Spawner : MonoBehaviour
 
             float force = Random.Range(minForce, maxForce);
             Vector3 launchDirection = new Vector3(Random.Range(minSideForce, maxSideForce), force, Random.Range(minDepthForce, maxDepthForce));
+            bool isBomb = fruit.GetComponent<Bomb>() != null;
+            if (isBomb)
+                launchDirection *= 0.5f;
             fruit.GetComponent<Rigidbody>().AddForce(launchDirection, ForceMode.Impulse);
 
             Fruit fruitScript = fruit.GetComponent<Fruit>();

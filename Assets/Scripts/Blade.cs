@@ -8,11 +8,11 @@ public class Blade : MonoBehaviour, IBladeSliceSource
     public float minSliceVelocity = 0.01f;
 
     [Header("3D Play Volume")]
-    [SerializeField] private Vector3 playVolumeCenter = new Vector3(0f, 1.25f, -3.5f);
-    [SerializeField] private Vector3 playVolumeSize = new Vector3(1.25f, 1.15f, 0.7f);
+    [SerializeField] private Vector3 playVolumeCenter = new Vector3(0f, 1.25f, -14f);
+    [SerializeField] private Vector3 playVolumeSize = new Vector3(2.8f, 1.45f, 0.9f);
 
     [Header("Webcam XR")]
-    [SerializeField] private bool useWebcamTracking = false;
+    [SerializeField] private bool useWebcamTracking = true;
     [SerializeField] private Vector3 webcamRightNeutral = new Vector3(0.34f, 1.25f, 0.72f);
     [SerializeField] private Vector3 webcamLeftNeutral = new Vector3(-0.34f, 1.25f, 0.72f);
     [SerializeField] private float webcamHorizontalScale = 32.0f;
@@ -36,10 +36,11 @@ public class Blade : MonoBehaviour, IBladeSliceSource
     [SerializeField] private bool showTrailInXR = false;
 
     [Header("Desktop")]
-    [SerializeField] private float desktopSlicePlaneZ = -3.35f;
+    [SerializeField] private float desktopSlicePlaneZ = -14f;
+    [SerializeField] private bool autoAlignDesktopSlicePlane = true;
 
     [Header("Collision")]
-    [SerializeField] private Vector3 sliceCollider3DSize = new Vector3(0.026f, 0.29f, 0.022f);
+    [SerializeField] private Vector3 sliceCollider3DSize = new Vector3(0.08f, 0.42f, 0.22f);
 
     private Camera mainCamera;
     private BoxCollider sliceCollider;
@@ -69,6 +70,7 @@ public class Blade : MonoBehaviour, IBladeSliceSource
     private Quaternion lastLeftBladeRotation = Quaternion.identity;
     private bool hasLastRightBladePosition;
     private bool hasLastLeftBladePosition;
+    private float nextWebcamDebugLogTime;
 
     public Vector3 direction { get; private set; }
     public bool slicing { get; private set; }
@@ -98,6 +100,8 @@ public class Blade : MonoBehaviour, IBladeSliceSource
             GameObject receiverObject = new GameObject("Webcam Tracking Receiver");
             webcamReceiver = receiverObject.AddComponent<WebcamTrackingReceiver>();
         }
+
+        useWebcamTracking = true;
     }
 
     private void OnEnable()
@@ -114,15 +118,6 @@ public class Blade : MonoBehaviour, IBladeSliceSource
     {
         bladeVisualsDrivenThisFrame = false;
 
-        if (TryUpdateXRControllerSlices())
-            return;
-
-        if (xrSliceActive)
-        {
-            StopAllSlices();
-            xrSliceActive = false;
-        }
-
         if (TryUpdateWebcamSlices())
             return;
 
@@ -130,6 +125,15 @@ public class Blade : MonoBehaviour, IBladeSliceSource
         {
             StopAllSlices();
             webcamSliceActive = false;
+        }
+
+        if (TryUpdateXRControllerSlices())
+            return;
+
+        if (xrSliceActive)
+        {
+            StopAllSlices();
+            xrSliceActive = false;
         }
 
         UpdateMouseSlice();
@@ -193,18 +197,29 @@ public class Blade : MonoBehaviour, IBladeSliceSource
 
     private bool TryUpdateWebcamSlices()
     {
-        if (!useWebcamTracking || webcamReceiver == null || !webcamReceiver.HasFreshFrame)
+        if (webcamReceiver == null || !webcamReceiver.HasFreshFrame)
+        {
+            LogWebcamDebug("waiting", webcamReceiver != null && webcamReceiver.HasFreshFrame, false, false, false);
             return false;
+        }
 
         TrackingFrameV1 frame = webcamReceiver.LatestFrame;
-        if (frame == null || !frame.calibrated)
-            return false;
+        bool rightTracked = frame != null && frame.right != null && frame.right.tracked;
+        bool leftTracked = frame != null && frame.left != null && frame.left.tracked;
 
-        bool rightTracked = frame.right != null && frame.right.tracked;
-        bool leftTracked = frame.left != null && frame.left.tracked;
+        if (frame == null || !frame.calibrated)
+        {
+            LogWebcamDebug("not calibrated", true, false, leftTracked, rightTracked);
+            return false;
+        }
 
         if (!rightTracked && !leftTracked)
+        {
+            LogWebcamDebug("no hands tracked", true, true, false, false);
             return false;
+        }
+
+        LogWebcamDebug("driving blades", true, true, leftTracked, rightTracked);
 
         webcamSliceActive = true;
 
@@ -230,6 +245,15 @@ public class Blade : MonoBehaviour, IBladeSliceSource
 
         UpdateBladeVisualsFromLastPoses(rightTracked, leftTracked);
         return true;
+    }
+
+    private void LogWebcamDebug(string state, bool fresh, bool calibrated, bool leftTracked, bool rightTracked)
+    {
+        if (Time.unscaledTime < nextWebcamDebugLogTime)
+            return;
+
+        nextWebcamDebugLogTime = Time.unscaledTime + 1.0f;
+        Debug.Log($"Webcam blade state: {state}, fresh={fresh}, calibrated={calibrated}, left={leftTracked}, right={rightTracked}", this);
     }
 
     private BladePose3D CreateWebcamPose(BladeHand hand, HandTrackingData handData, Vector3 neutral)
@@ -412,7 +436,7 @@ public class Blade : MonoBehaviour, IBladeSliceSource
         slicing = pose.Active;
 
         float velocity = Time.deltaTime > 0f ? pose.Direction.magnitude / Time.deltaTime : 0f;
-        sliceCollider.enabled = pose.Active && velocity > minSliceVelocity;
+        sliceCollider.enabled = pose.Active && (!IsDesktopPointerSlice() || velocity > minSliceVelocity);
         if (sliceCollider.enabled)
             SweepBombs(sliceCollider, this);
 
@@ -490,21 +514,51 @@ public class Blade : MonoBehaviour, IBladeSliceSource
         if (mainCamera == null)
             return ClampToPlayVolume(new Vector3(0f, playVolumeCenter.y, desktopSlicePlaneZ));
 
+        float slicePlaneZ = GetDesktopSlicePlaneZ();
         if (mainCamera.orthographic)
         {
             Vector3 position = mainCamera.ScreenToWorldPoint(screenPosition);
-            position.z = desktopSlicePlaneZ;
-            return ClampToPlayVolume(position);
+            position.z = slicePlaneZ;
+            position = ClampToPlayVolume(position);
+            position.z = slicePlaneZ;
+            return position;
         }
 
         Ray ray = mainCamera.ScreenPointToRay(screenPosition);
-        Plane slicePlane = new Plane(Vector3.back, new Vector3(0f, 0f, desktopSlicePlaneZ));
+        Plane slicePlane = new Plane(Vector3.back, new Vector3(0f, 0f, slicePlaneZ));
         if (slicePlane.Raycast(ray, out float enter))
-            return ClampToPlayVolume(ray.GetPoint(enter));
+        {
+            Vector3 position = ClampToPlayVolume(ray.GetPoint(enter));
+            position.z = slicePlaneZ;
+            return position;
+        }
 
         Vector3 fallback = mainCamera.ScreenToWorldPoint(new Vector3(screenPosition.x, screenPosition.y, Mathf.Abs(mainCamera.transform.position.z)));
-        fallback.z = desktopSlicePlaneZ;
-        return ClampToPlayVolume(fallback);
+        fallback.z = slicePlaneZ;
+        fallback = ClampToPlayVolume(fallback);
+        fallback.z = slicePlaneZ;
+        return fallback;
+    }
+
+    private float GetDesktopSlicePlaneZ()
+    {
+        if (!autoAlignDesktopSlicePlane)
+            return desktopSlicePlaneZ;
+
+        StartFruit startFruit = FindObjectOfType<StartFruit>();
+        if (startFruit != null)
+            return startFruit.transform.position.z;
+
+        Fruit fruit = FindObjectOfType<Fruit>();
+        if (fruit != null)
+            return fruit.transform.position.z;
+
+        return desktopSlicePlaneZ;
+    }
+
+    private bool IsDesktopPointerSlice()
+    {
+        return !xrSliceActive && !webcamSliceActive;
     }
 
     private void ConfigureSliceCollider()
@@ -512,6 +566,14 @@ public class Blade : MonoBehaviour, IBladeSliceSource
         Collider existingCollider = GetComponent<Collider>();
         if (existingCollider != null)
             Destroy(existingCollider);
+
+        Rigidbody body = GetComponent<Rigidbody>();
+        if (body == null)
+            body = gameObject.AddComponent<Rigidbody>();
+
+        body.isKinematic = true;
+        body.useGravity = false;
+        body.collisionDetectionMode = CollisionDetectionMode.ContinuousSpeculative;
 
         sliceCollider = gameObject.AddComponent<BoxCollider>();
         sliceCollider.isTrigger = true;
@@ -527,6 +589,11 @@ public class Blade : MonoBehaviour, IBladeSliceSource
 
         LeftBladeProxy proxy = leftSliceObject.AddComponent<LeftBladeProxy>();
         proxy.Init(this);
+
+        Rigidbody body = leftSliceObject.AddComponent<Rigidbody>();
+        body.isKinematic = true;
+        body.useGravity = false;
+        body.collisionDetectionMode = CollisionDetectionMode.ContinuousSpeculative;
 
         leftSliceCollider = leftSliceObject.AddComponent<BoxCollider>();
         leftSliceCollider.isTrigger = true;

@@ -1,6 +1,7 @@
 using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.XR;
 using WebcamXR;
 
 [DefaultExecutionOrder(-1)]
@@ -17,9 +18,9 @@ public class GameManager : MonoBehaviour
     [SerializeField] private DojoSceneBuilder dojoSceneBuilder;
     [SerializeField] private XRRuntimeRigDriver xrRuntimeRigDriver;
     [Header("VR HUD")]
-    [SerializeField] private Vector3 hudWorldPosition = new Vector3(0f, 1.7f, -3.35f);
-    [SerializeField] private Vector2 hudCanvasSize = new Vector2(1.2f, 0.28f);
-    [SerializeField] private float hudCanvasScale = 0.0015f;
+    [SerializeField] private Vector3 hudWorldPosition = new Vector3(0f, 3.05f, -14f);
+    [SerializeField] private Vector2 hudCanvasSize = new Vector2(2.5f, 0.5f);
+    [SerializeField] private float hudCanvasScale = 0.0035f;
 
     public int score { get; private set; } = 0;
     private StartMenuView startMenu;
@@ -256,8 +257,8 @@ public class GameManager : MonoBehaviour
 
     private void ConfigureSpawnerForMode(FruitNinjaMode mode)
     {
-        spawner.minSpawnedObjectScale = 0.22f;
-        spawner.maxSpawnedObjectScale = 0.3f;
+        spawner.minSpawnedObjectScale = 0.72f;
+        spawner.maxSpawnedObjectScale = 0.82f;
         spawner.minSideForce = -0.18f;
         spawner.maxSideForce = 0.18f;
         spawner.minDepthForce = 0.04f;
@@ -266,25 +267,36 @@ public class GameManager : MonoBehaviour
         spawner.bombChance = mode == FruitNinjaMode.Zen ? 0f : mode == FruitNinjaMode.Arcade ? 0.08f : 0.05f;
 
         if (mode == FruitNinjaMode.Zen) {
-            spawner.minSpawnDelay = 0.85f;
-            spawner.maxSpawnDelay = 1.55f;
-            spawner.minForce = 4.25f;
-            spawner.maxForce = 5.75f;
+            spawner.minSpawnDelay = 0.5f;
+            spawner.maxSpawnDelay = 1.0f;
+            spawner.minForce = 6.0f;
+            spawner.maxForce = 7.8f;
         } else if (mode == FruitNinjaMode.Arcade) {
-            spawner.minSpawnDelay = 0.32f;
-            spawner.maxSpawnDelay = 0.85f;
-            spawner.minForce = 4.75f;
-            spawner.maxForce = 6.5f;
+            spawner.minSpawnDelay = 0.28f;
+            spawner.maxSpawnDelay = 0.7f;
+            spawner.minForce = 6.4f;
+            spawner.maxForce = 8.4f;
         } else if (mode == FruitNinjaMode.Battle) {
-            spawner.minSpawnDelay = 0.3f;
-            spawner.maxSpawnDelay = 0.75f;
-            spawner.minForce = 5f;
-            spawner.maxForce = 6.75f;
+            spawner.minSpawnDelay = 0.25f;
+            spawner.maxSpawnDelay = 0.65f;
+            spawner.minForce = 6.6f;
+            spawner.maxForce = 8.6f;
         } else {
-            spawner.minSpawnDelay = 0.45f;
-            spawner.maxSpawnDelay = 1.25f;
-            spawner.minForce = 4.5f;
-            spawner.maxForce = 6.25f;
+            spawner.minSpawnDelay = 0.4f;
+            spawner.maxSpawnDelay = 0.9f;
+            spawner.minForce = 6.2f;
+            spawner.maxForce = 8.0f;
+        }
+
+        spawner.minSpawnDelay *= 1.12f;
+        spawner.maxSpawnDelay *= 1.12f;
+
+        if (!XRSettings.enabled)
+        {
+            spawner.minSpawnDelay *= 0.75f;
+            spawner.maxSpawnDelay *= 0.75f;
+            if (mode != FruitNinjaMode.Zen)
+                spawner.bombChance = Mathf.Min(0.12f, spawner.bombChance + 0.01f);
         }
     }
 
@@ -371,16 +383,23 @@ public class GameManager : MonoBehaviour
         if (canvas == null)
             return;
 
+        bool desktopHud = !UnityEngine.XR.XRSettings.enabled;
         if (scoreText == null) {
-            scoreText = CreateHudText("Score Text", canvas.transform, new Vector2(-330f, 48f), new Vector2(240f, 90f), 56, TextAnchor.MiddleLeft);
+            scoreText = CreateHudText("Score Text", canvas.transform, new Vector2(-450f, 70f), new Vector2(360f, 130f), 110, TextAnchor.MiddleLeft);
         } else {
-            MoveTextToHud(scoreText, canvas.transform, new Vector2(-330f, 48f), new Vector2(240f, 90f), 56, TextAnchor.MiddleLeft);
+            MoveTextToHud(scoreText, canvas.transform, new Vector2(-450f, 70f), new Vector2(360f, 130f), 110, TextAnchor.MiddleLeft);
         }
 
         if (statusText == null) {
-            statusText = CreateHudText("Status Text", canvas.transform, new Vector2(120f, 48f), new Vector2(620f, 90f), 30, TextAnchor.MiddleRight);
+            statusText = CreateHudText("Status Text", canvas.transform, new Vector2(210f, 70f), new Vector2(1050f, 130f), 64, TextAnchor.MiddleRight);
         } else {
-            MoveTextToHud(statusText, canvas.transform, new Vector2(120f, 48f), new Vector2(620f, 90f), 30, TextAnchor.MiddleRight);
+            MoveTextToHud(statusText, canvas.transform, new Vector2(210f, 70f), new Vector2(1050f, 130f), 64, TextAnchor.MiddleRight);
+        }
+
+        if (desktopHud)
+        {
+            MoveTextToHudAnchored(scoreText, canvas.transform, new Vector2(24f, -18f), new Vector2(260f, 80f), 54, TextAnchor.UpperLeft, Vector2.up, Vector2.up, new Vector2(0f, 1f));
+            MoveTextToHudAnchored(statusText, canvas.transform, new Vector2(-24f, -18f), new Vector2(760f, 80f), 38, TextAnchor.UpperRight, Vector2.one, Vector2.one, Vector2.one);
         }
     }
 
@@ -397,15 +416,38 @@ public class GameManager : MonoBehaviour
             canvasObject.AddComponent<GraphicRaycaster>();
         }
 
-        canvas.renderMode = RenderMode.WorldSpace;
         canvas.sortingOrder = 20;
-        canvas.worldCamera = Camera.main;
-
+        CanvasScaler scaler = canvas.GetComponent<CanvasScaler>();
         RectTransform rect = canvas.GetComponent<RectTransform>();
-        rect.sizeDelta = hudCanvasSize / hudCanvasScale;
-        rect.position = hudWorldPosition;
-        rect.rotation = Quaternion.identity;
-        rect.localScale = Vector3.one * hudCanvasScale;
+
+        if (!UnityEngine.XR.XRSettings.enabled)
+        {
+            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            canvas.worldCamera = null;
+            if (scaler != null)
+            {
+                scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+                scaler.referenceResolution = new Vector2(1280f, 720f);
+                scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
+                scaler.matchWidthOrHeight = 0.5f;
+            }
+
+            rect.anchorMin = Vector2.zero;
+            rect.anchorMax = Vector2.one;
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.anchoredPosition = Vector2.zero;
+            rect.sizeDelta = Vector2.zero;
+            rect.localScale = Vector3.one;
+        }
+        else
+        {
+            canvas.renderMode = RenderMode.WorldSpace;
+            canvas.worldCamera = Camera.main;
+            rect.sizeDelta = hudCanvasSize / hudCanvasScale;
+            rect.position = hudWorldPosition;
+            rect.rotation = Quaternion.identity;
+            rect.localScale = Vector3.one * hudCanvasScale;
+        }
 
         return canvas;
     }
@@ -435,6 +477,24 @@ public class GameManager : MonoBehaviour
         rect.anchorMin = new Vector2(0.5f, 0.5f);
         rect.anchorMax = new Vector2(0.5f, 0.5f);
         rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.anchoredPosition = anchoredPosition;
+        rect.sizeDelta = size;
+    }
+
+    private void MoveTextToHudAnchored(Text text, Transform parent, Vector2 anchoredPosition, Vector2 size, int fontSize, TextAnchor alignment, Vector2 anchorMin, Vector2 anchorMax, Vector2 pivot)
+    {
+        if (text == null)
+            return;
+
+        text.transform.SetParent(parent, false);
+        text.fontSize = fontSize;
+        text.alignment = alignment;
+        text.raycastTarget = false;
+
+        RectTransform rect = text.rectTransform;
+        rect.anchorMin = anchorMin;
+        rect.anchorMax = anchorMax;
+        rect.pivot = pivot;
         rect.anchoredPosition = anchoredPosition;
         rect.sizeDelta = size;
     }

@@ -23,22 +23,26 @@ public static class DownloadedArtLibrary
     private static Material bombBodyMaterial;
     private static Material bombFuseMaterial;
     private static Material bombSparkMaterial;
+    private static Material bombGlowMaterial;
+    private static Material bombWarningMaterial;
+    private static Material bombSteamMaterial;
     private static readonly System.Collections.Generic.Dictionary<int, Color> fruitJuiceColors = new System.Collections.Generic.Dictionary<int, Color>();
+    private static readonly System.Collections.Generic.Dictionary<int, Color> fruitCutColors = new System.Collections.Generic.Dictionary<int, Color>();
 
     private static readonly FruitArt[] FruitArtPool =
     {
-        new FruitArt("apple", "apple-half", Vector3.one * 1.05f, Vector3.one * 0.95f, Color.white, new Color(1f, 0.12f, 0.06f), new Color(1f, 0.84f, 0.62f)),
-        new FruitArt("banana", "banana", new Vector3(0.9f, 0.9f, 0.9f), new Vector3(0.82f, 0.82f, 0.82f), Color.white, new Color(1f, 0.82f, 0.08f), new Color(1f, 0.9f, 0.42f)),
-        new FruitArt("cherries", "cherries", Vector3.one * 0.9f, Vector3.one * 0.78f, Color.white, new Color(0.85f, 0.02f, 0.08f), new Color(0.95f, 0.04f, 0.1f)),
-        new FruitArt("coconut", "coconut-half", Vector3.one * 1.0f, Vector3.one * 0.92f, Color.white, new Color(0.86f, 0.7f, 0.48f), new Color(0.96f, 0.92f, 0.84f)),
-        new FruitArt("grapes", "grapes", Vector3.one * 0.96f, Vector3.one * 0.82f, Color.white, new Color(0.42f, 0.08f, 0.8f), new Color(0.5f, 0.12f, 0.8f)),
-        new FruitArt("lemon", "lemon-half", Vector3.one * 1.05f, Vector3.one * 0.96f, Color.white, new Color(1f, 0.85f, 0.06f), new Color(1f, 0.9f, 0.18f)),
+        new FruitArt("apple", "apple-half", Vector3.one * 1.05f, Vector3.one * 0.95f, new Color(1f, 0.16f, 0.08f), new Color(1f, 0.12f, 0.06f), new Color(1f, 0.84f, 0.62f)),
+        new FruitArt("banana", "banana", new Vector3(0.9f, 0.9f, 0.9f), new Vector3(0.82f, 0.82f, 0.82f), new Color(1f, 0.86f, 0.12f), new Color(1f, 0.82f, 0.08f), new Color(1f, 0.9f, 0.42f)),
+        new FruitArt("cherries", "cherries", Vector3.one * 0.9f, Vector3.one * 0.78f, new Color(0.9f, 0.04f, 0.08f), new Color(0.85f, 0.02f, 0.08f), new Color(0.95f, 0.04f, 0.1f)),
+        new FruitArt("coconut", "coconut-half", Vector3.one * 1.0f, Vector3.one * 0.92f, new Color(0.55f, 0.34f, 0.18f), new Color(0.86f, 0.7f, 0.48f), new Color(0.96f, 0.92f, 0.84f)),
+        new FruitArt("grapes", "grapes", Vector3.one * 0.96f, Vector3.one * 0.82f, new Color(0.46f, 0.12f, 0.85f), new Color(0.42f, 0.08f, 0.8f), new Color(0.5f, 0.12f, 0.8f)),
+        new FruitArt("lemon", "lemon-half", Vector3.one * 1.05f, Vector3.one * 0.96f, new Color(1f, 0.92f, 0.08f), new Color(1f, 0.85f, 0.06f), new Color(1f, 0.9f, 0.18f)),
         new FruitArt("orange", "lemon-half", Vector3.one * 1.05f, Vector3.one * 0.95f, new Color(1f, 0.62f, 0.18f), new Color(1f, 0.45f, 0.03f), new Color(1f, 0.5f, 0.08f)),
-        new FruitArt("pear", "pear-half", Vector3.one * 1.05f, Vector3.one * 0.95f, Color.white, new Color(0.72f, 0.95f, 0.16f), new Color(0.86f, 1f, 0.48f)),
-        new FruitArt("pineapple", "pineapple", Vector3.one * 0.78f, Vector3.one * 0.68f, Color.white, new Color(1f, 0.65f, 0.08f), new Color(1f, 0.82f, 0.18f)),
-        new FruitArt("strawberry", "strawberry", Vector3.one * 1.08f, Vector3.one * 0.94f, Color.white, new Color(1f, 0.05f, 0.08f), new Color(1f, 0.18f, 0.18f)),
-        new FruitArt("watermelon", "watermelon", Vector3.one * 1.08f, new Vector3(0.82f, 0.68f, 0.82f), Color.white, new Color(1f, 0.05f, 0.1f), new Color(1f, 0.05f, 0.1f), true),
-        new FruitArt("avocado", "advocado-half", Vector3.one * 1.0f, Vector3.one * 0.92f, Color.white, new Color(0.66f, 0.95f, 0.22f), new Color(0.68f, 0.92f, 0.22f)),
+        new FruitArt("pear", "pear-half", Vector3.one * 1.05f, Vector3.one * 0.95f, new Color(0.72f, 0.95f, 0.16f), new Color(0.72f, 0.95f, 0.16f), new Color(0.86f, 1f, 0.48f)),
+        new FruitArt("pineapple", "pineapple", Vector3.one * 0.78f, Vector3.one * 0.68f, new Color(1f, 0.66f, 0.08f), new Color(1f, 0.65f, 0.08f), new Color(1f, 0.82f, 0.18f)),
+        new FruitArt("strawberry", "strawberry", Vector3.one * 1.08f, Vector3.one * 0.94f, new Color(1f, 0.08f, 0.1f), new Color(1f, 0.05f, 0.08f), new Color(1f, 0.18f, 0.18f)),
+        new FruitArt("watermelon", "watermelon", Vector3.one * 1.08f, new Vector3(0.82f, 0.68f, 0.82f), new Color(0.08f, 0.58f, 0.16f), new Color(1f, 0.05f, 0.1f), new Color(1f, 0.05f, 0.1f), true),
+        new FruitArt("avocado", "advocado-half", Vector3.one * 1.0f, Vector3.one * 0.92f, new Color(0.42f, 0.72f, 0.16f), new Color(0.66f, 0.95f, 0.22f), new Color(0.68f, 0.92f, 0.22f)),
     };
 
     public static void ApplyFruitVisuals(GameObject fruitRoot, GameObject whole, GameObject sliced)
@@ -52,6 +56,7 @@ public static class DownloadedArtLibrary
             return;
 
         fruitJuiceColors[fruitRoot.GetInstanceID()] = art.JuiceColor;
+        fruitCutColors[fruitRoot.GetInstanceID()] = art.CutFaceColor;
 
         Rigidbody[] sliceBodies = sliced.GetComponentsInChildren<Rigidbody>(true);
         Transform halfParentA = sliceBodies.Length > 0 ? sliceBodies[0].transform : sliced.transform;
@@ -95,6 +100,7 @@ public static class DownloadedArtLibrary
         HideRenderers(bombRoot);
         ClearGeneratedChildren(bombRoot.transform);
         CreateRuntimeBombVisual(bombRoot.transform);
+        CreateBombWarningEffects(bombRoot.transform);
     }
 
     public static void BuildDojoSet(Transform root)
@@ -156,16 +162,16 @@ public static class DownloadedArtLibrary
 
     public static void PlayFruitSliceVfx(Vector3 position, Vector3 direction, GameObject fruitRoot)
     {
-        Color color = GetJuiceColor(fruitRoot);
-        ParticleSystem particles = CreateSpriteBurst("Downloaded Fruit Juice", position, color, FruitVfxMaterial, 34, 0.48f, 0.022f, 0.42f);
+        Color color = GetCutColor(fruitRoot);
+        ParticleSystem particles = CreateSpriteBurst("Downloaded Fruit Juice", position, color, FruitVfxMaterial, 48, 0.72f, 0.03f, 0.6f);
         ParticleSystem.ShapeModule shape = particles.shape;
         shape.shapeType = ParticleSystemShapeType.Cone;
-        shape.angle = 22f;
-        shape.radius = 0.022f;
+        shape.angle = 26f;
+        shape.radius = 0.03f;
         particles.transform.rotation = Quaternion.LookRotation(Vector3.forward, direction.sqrMagnitude > 0.0001f ? direction.normalized : Vector3.up);
         particles.Play();
         CreateJuiceDroplets(position, direction, color);
-        Object.Destroy(particles.gameObject, 1.05f);
+        Object.Destroy(particles.gameObject, 1.35f);
     }
 
     public static void PlayBombHitVfx(Vector3 position)
@@ -237,6 +243,7 @@ public static class DownloadedArtLibrary
         effectObject.transform.position = position;
 
         ParticleSystem particles = effectObject.AddComponent<ParticleSystem>();
+        particles.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
         ParticleSystem.MainModule main = particles.main;
         main.loop = false;
         main.duration = 0.08f;
@@ -303,12 +310,12 @@ public static class DownloadedArtLibrary
         Material material = Object.Instantiate(JuiceDropletMaterial);
         material.color = color;
 
-        for (int i = 0; i < 14; i++)
+        for (int i = 0; i < 10; i++)
         {
             GameObject droplet = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             droplet.name = "Downloaded Juice Visible Droplet";
-            droplet.transform.position = position + Random.insideUnitSphere * 0.04f;
-            float size = Random.Range(0.018f, 0.036f);
+            droplet.transform.position = position + Random.insideUnitSphere * 0.05f;
+            float size = Random.Range(0.022f, 0.046f);
             droplet.transform.localScale = Vector3.one * size;
             droplet.GetComponent<Renderer>().material = material;
 
@@ -319,12 +326,12 @@ public static class DownloadedArtLibrary
             Rigidbody body = droplet.AddComponent<Rigidbody>();
             body.mass = 0.015f;
             body.useGravity = true;
-            Vector3 force = sliceDirection * Random.Range(0.2f, 0.42f)
-                + tangent * Random.Range(-0.22f, 0.22f)
-                + Vector3.up * Random.Range(0.06f, 0.26f);
+            Vector3 force = sliceDirection * Random.Range(0.28f, 0.56f)
+                + tangent * Random.Range(-0.28f, 0.28f)
+                + Vector3.up * Random.Range(0.08f, 0.32f);
             body.AddForce(force, ForceMode.Impulse);
 
-            Object.Destroy(droplet, 0.75f);
+            Object.Destroy(droplet, 0.95f);
         }
     }
 
@@ -411,10 +418,75 @@ public static class DownloadedArtLibrary
         root.transform.localRotation = Quaternion.identity;
         root.transform.localScale = Vector3.one;
 
-        CreatePrimitiveVisual(root.transform, "Runtime Bomb Body", PrimitiveType.Sphere, Vector3.zero, Quaternion.identity, Vector3.one * 0.86f, BombBodyMaterial);
+        CreatePrimitiveVisual(root.transform, "Runtime Bomb Body", PrimitiveType.Sphere, Vector3.zero, Quaternion.identity, Vector3.one * 0.68f, BombBodyMaterial);
         CreatePrimitiveVisual(root.transform, "Runtime Bomb Cap", PrimitiveType.Cylinder, new Vector3(0f, 0.39f, 0f), Quaternion.identity, new Vector3(0.16f, 0.055f, 0.16f), PathEdgeMaterial);
         CreatePrimitiveVisual(root.transform, "Runtime Bomb Fuse", PrimitiveType.Cylinder, new Vector3(0.08f, 0.55f, 0f), Quaternion.Euler(0f, 0f, -28f), new Vector3(0.025f, 0.16f, 0.025f), BombFuseMaterial);
         CreatePrimitiveVisual(root.transform, "Runtime Bomb Spark", PrimitiveType.Sphere, new Vector3(0.16f, 0.69f, 0f), Quaternion.identity, Vector3.one * 0.085f, BombSparkMaterial);
+    }
+
+    private static void CreateBombWarningEffects(Transform parent)
+    {
+        if (parent == null)
+            return;
+
+        CreatePrimitiveVisual(parent, "Runtime Bomb X Arm A", PrimitiveType.Cube, new Vector3(-0.042f, 0.06f, 0.19f), Quaternion.Euler(0f, 0f, 45f), new Vector3(0.085f, 0.26f, 0.045f), BombWarningMaterial);
+        CreatePrimitiveVisual(parent, "Runtime Bomb X Arm B", PrimitiveType.Cube, new Vector3(0.042f, 0.06f, 0.19f), Quaternion.Euler(0f, 0f, -45f), new Vector3(0.085f, 0.26f, 0.045f), BombWarningMaterial);
+
+        CreateBombSteamPlume(parent);
+    }
+
+    private static GameObject CreatePrimitive(Transform parent, PrimitiveType primitiveType, string name, Vector3 localPosition, Quaternion localRotation, Vector3 localScale, Material material)
+    {
+        GameObject visual = GameObject.CreatePrimitive(primitiveType);
+        visual.name = name;
+        visual.transform.SetParent(parent, false);
+        visual.transform.localPosition = localPosition;
+        visual.transform.localRotation = localRotation;
+        visual.transform.localScale = localScale;
+        visual.GetComponent<Renderer>().material = material;
+        Object.Destroy(visual.GetComponent<Collider>());
+        return visual;
+    }
+
+    private static void CreateBombSteamPlume(Transform parent)
+    {
+        GameObject steamObject = new GameObject("Runtime Bomb Steam");
+        steamObject.transform.SetParent(parent, false);
+        steamObject.transform.localPosition = new Vector3(0.07f, 0.62f, 0f);
+
+        ParticleSystem particles = steamObject.AddComponent<ParticleSystem>();
+        ParticleSystem.MainModule main = particles.main;
+        main.loop = true;
+        main.duration = 1.2f;
+        main.startLifetime = new ParticleSystem.MinMaxCurve(0.8f, 1.3f);
+        main.startSpeed = new ParticleSystem.MinMaxCurve(0.08f, 0.16f);
+        main.startSize = new ParticleSystem.MinMaxCurve(0.09f, 0.16f);
+        main.startColor = new Color(1f, 1f, 1f, 0.9f);
+        main.simulationSpace = ParticleSystemSimulationSpace.World;
+        main.maxParticles = 32;
+        main.playOnAwake = true;
+        main.gravityModifier = -0.02f;
+
+        ParticleSystem.EmissionModule emission = particles.emission;
+        emission.enabled = true;
+        emission.rateOverTime = 20f;
+
+        ParticleSystem.ShapeModule shape = particles.shape;
+        shape.shapeType = ParticleSystemShapeType.Cone;
+        shape.angle = 8f;
+        shape.radius = 0.025f;
+
+        ParticleSystem.ColorOverLifetimeModule colorLifetime = particles.colorOverLifetime;
+        colorLifetime.enabled = true;
+        Gradient gradient = new Gradient();
+        gradient.SetKeys(
+            new[] { new GradientColorKey(new Color(1f, 1f, 1f), 0f), new GradientColorKey(new Color(1f, 1f, 1f), 1f) },
+            new[] { new GradientAlphaKey(0.9f, 0f), new GradientAlphaKey(0.42f, 0.5f), new GradientAlphaKey(0f, 1f) });
+        colorLifetime.color = gradient;
+
+        ParticleSystemRenderer renderer = particles.GetComponent<ParticleSystemRenderer>();
+        renderer.renderMode = ParticleSystemRenderMode.Billboard;
+        renderer.material = BombSteamMaterial;
     }
 
     private static void CreateBombFragments(Vector3 position, Vector3 sliceDirection)
@@ -424,7 +496,7 @@ public static class DownloadedArtLibrary
             separationAxis = Vector3.right;
         separationAxis.Normalize();
 
-        for (int i = 0; i < 6; i++)
+        for (int i = 0; i < 14; i++)
         {
             GameObject fragment = GameObject.CreatePrimitive(i % 2 == 0 ? PrimitiveType.Cube : PrimitiveType.Sphere);
             fragment.name = "Downloaded Bomb Fragment";
@@ -580,6 +652,9 @@ public static class DownloadedArtLibrary
     private static Material BombBodyMaterial => bombBodyMaterial ?? (bombBodyMaterial = CreateBombBodyMaterial());
     private static Material BombFuseMaterial => bombFuseMaterial ?? (bombFuseMaterial = CreateColoredMaterial("Runtime Bomb Fuse Material", new Color(0.42f, 0.26f, 0.12f), 0.15f));
     private static Material BombSparkMaterial => bombSparkMaterial ?? (bombSparkMaterial = CreateBombSparkMaterial());
+    private static Material BombGlowMaterial => bombGlowMaterial ?? (bombGlowMaterial = CreateBombGlowMaterial());
+    private static Material BombWarningMaterial => bombWarningMaterial ?? (bombWarningMaterial = CreateBombWarningMaterial());
+    private static Material BombSteamMaterial => bombSteamMaterial ?? (bombSteamMaterial = CreateBombSteamMaterial());
 
     private static Material CreateBombBodyMaterial()
     {
@@ -599,6 +674,37 @@ public static class DownloadedArtLibrary
         return material;
     }
 
+    private static Material CreateBombGlowMaterial()
+    {
+        Material material = new Material(Shader.Find("Sprites/Default"));
+        material.name = "Runtime Bomb Glow Material";
+        material.color = new Color(1f, 0.12f, 0.12f, 0.18f);
+        return material;
+    }
+
+    private static Material CreateBombWarningMaterial()
+    {
+        Material material = CreateColoredMaterial("Runtime Bomb Warning Material", new Color(1f, 0.03f, 0.03f), 0.2f);
+        material.EnableKeyword("_EMISSION");
+        material.SetColor("_EmissionColor", new Color(1f, 0.02f, 0.02f) * 5.0f);
+        return material;
+    }
+
+    private static Material CreateBombSteamMaterial()
+    {
+        Shader shader = Shader.Find("Particles/Standard Unlit");
+        if (shader == null)
+            shader = Shader.Find("Mobile/Particles/Alpha Blended");
+        if (shader == null)
+            shader = Shader.Find("Sprites/Default");
+
+        Material material = new Material(shader);
+        material.name = "Runtime Bomb Steam Material";
+        material.mainTexture = Resources.Load<Texture2D>(VfxRoot + "smoke_03");
+        material.color = new Color(1f, 1f, 1f, 0.75f);
+        return material;
+    }
+
     private static Material CreateColoredMaterial(string name, Color color, float smoothness)
     {
         Material material = new Material(Shader.Find("Standard"));
@@ -614,6 +720,14 @@ public static class DownloadedArtLibrary
             return color;
 
         return new Color(1f, 0.12f, 0.06f);
+    }
+
+    private static Color GetCutColor(GameObject fruitRoot)
+    {
+        if (fruitRoot != null && fruitCutColors.TryGetValue(fruitRoot.GetInstanceID(), out Color color))
+            return color;
+
+        return GetJuiceColor(fruitRoot);
     }
 
     private static FruitArt GetFruitArt(GameObject fruitRoot)
@@ -650,4 +764,5 @@ public static class DownloadedArtLibrary
         public float SizeMultiplier { get; }
         public bool WatermelonCutFace { get; }
     }
+
 }
